@@ -400,6 +400,13 @@ export class ProfileController {
         const textDisplay = wrapper.querySelector('.component-dropdown-text');
         textDisplay.textContent = option.dataset.label;
         
+        // NUEVO: Sincronizar instantáneamente el icono (ej. en el dropdown de temas)
+        const iconDisplay = wrapper.querySelector('.trigger-select-icon');
+        const optionIcon = option.querySelector('.component-menu-link-icon span');
+        if (iconDisplay && optionIcon) {
+            iconDisplay.textContent = optionIcon.textContent;
+        }
+        
         module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
         option.classList.add('active');
         module.classList.add('disabled');

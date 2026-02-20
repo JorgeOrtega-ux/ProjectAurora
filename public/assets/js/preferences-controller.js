@@ -72,6 +72,8 @@ export class PreferencesController {
     saveLocally() {
         localStorage.setItem('aurora_prefs', JSON.stringify(this.prefs));
         document.cookie = `aurora_lang=${this.prefs.language}; path=/; max-age=31536000; SameSite=Strict`;
+        // Almacenar el JSON en una cookie para Server-Side Rendering (evita el parpadeo en PHP)
+        document.cookie = `aurora_prefs=${encodeURIComponent(JSON.stringify(this.prefs))}; path=/; max-age=31536000; SameSite=Strict`;
     }
 
     async updatePreference(key, value) {
@@ -145,6 +147,13 @@ export class PreferencesController {
                     opt.classList.add('active');
                     const textDisplay = dropdown.querySelector('.component-dropdown-text');
                     if (textDisplay) textDisplay.textContent = opt.dataset.label;
+                    
+                    // Asegurarnos que el icono también sincronice visualmente
+                    const iconDisplay = dropdown.querySelector('.trigger-select-icon');
+                    const optionIcon = opt.querySelector('.component-menu-link-icon span');
+                    if (iconDisplay && optionIcon) {
+                        iconDisplay.textContent = optionIcon.textContent;
+                    }
                 }
             });
         });
