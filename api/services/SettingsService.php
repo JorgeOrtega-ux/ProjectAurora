@@ -22,7 +22,85 @@ class SettingsService {
         ]);
     }
 
+    private function countRecentChanges($userId, $field, $interval, $onlyUploads = false) {
+        $query = "SELECT COUNT(*) FROM user_changes_log WHERE user_id = :uid AND modified_field = :field AND changed_at >= DATE_SUB(NOW(), INTERVAL $interval)";
+        if ($onlyUploads) {
+            $query .= " AND new_value LIKE '%uploaded/%'";
+        }
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':uid' => $userId, ':field' => $field]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    // ==========================================
+    // SISTEMA ANTI-SPAM (RATE LIMITING)
+    // ==========================================
+
+    private function getUserIP() {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) { return $_SERVER['HTTP_CLIENT_IP']; } 
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) { return $_SERVER['HTTP_X_FORWARDED_FOR']; } 
+        else { return $_SERVER['REMOTE_ADDR']; }
+    }
+
+    private function checkRateLimit($action) {
+        $ip = $this->getUserIP();
+        $query = "SELECT attempts, blocked_until, last_attempt, (blocked_until > NOW()) as is_blocked FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            if ($result['is_blocked']) {
+                return false; 
+            }
+            // Si ya no está bloqueado pero tenía un bloqueo previo, o si pasaron 5 min desde el último intento, reseteamos el contador
+            if ($result['blocked_until'] !== null || strtotime($result['last_attempt']) < strtotime('-5 minutes')) {
+                $this->resetAttempts($action);
+            }
+        }
+        return true;
+    }
+
+    private function recordActionAttempt($action, $maxAttempts = 15, $blockMinutes = 5) {
+        $ip = $this->getUserIP();
+        $query = "SELECT attempts FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $attempts = $result['attempts'] + 1;
+            $blocked_until = ($attempts >= $maxAttempts) ? date('Y-m-d H:i:s', strtotime("+$blockMinutes minutes")) : null;
+            
+            $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
+            $updStmt = $this->conn->prepare($update);
+            $updStmt->execute([
+                ':attempts' => $attempts, 
+                ':blocked_until' => $blocked_until, 
+                ':ip' => $ip, 
+                ':action' => $action
+            ]);
+        } else {
+            $insert = "INSERT INTO rate_limits (ip_address, action, attempts, last_attempt) VALUES (:ip, :action, 1, NOW())";
+            $insStmt = $this->conn->prepare($insert);
+            $insStmt->execute([':ip' => $ip, ':action' => $action]);
+        }
+    }
+
+    private function resetAttempts($action) {
+        $ip = $this->getUserIP();
+        $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+    }
+
+    // ==========================================
+
     public function uploadAvatar($userId, $file) {
+        if ($this->countRecentChanges($userId, 'avatar', '1 DAY', true) >= 3) {
+            return ['success' => false, 'message' => 'js.profile.err_limit_avatar'];
+        }
+
         if ($file['error'] !== UPLOAD_ERR_OK) { return ['success' => false, 'message' => 'Error al subir la imagen. Código: ' . $file['error']]; }
         if ($file['size'] > 2 * 1024 * 1024) { return ['success' => false, 'message' => 'La imagen supera el peso máximo de 2MB.']; }
 
@@ -137,6 +215,16 @@ class SettingsService {
             return ['success' => true, 'message' => 'No hubo cambios.', 'newValue' => $newValue];
         }
 
+        if ($field === 'nombre') {
+            if ($this->countRecentChanges($userId, 'nombre', '7 DAY') >= 1) {
+                return ['success' => false, 'message' => 'js.profile.err_limit_username'];
+            }
+        } else if ($field === 'correo') {
+            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) {
+                return ['success' => false, 'message' => 'js.profile.err_limit_email'];
+            }
+        }
+
         $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
         if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
             $this->logChange($userId, $field, $oldValue, $newValue);
@@ -149,7 +237,7 @@ class SettingsService {
     }
 
     // ==========================================
-    // NUEVO: SISTEMA DE PREFERENCIAS
+    // SISTEMA DE PREFERENCIAS
     // ==========================================
 
     public function getPreferences($userId) {
@@ -158,7 +246,6 @@ class SettingsService {
         $prefs = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$prefs) {
-            // Retorna valores por defecto si no ha guardado ninguna preferencia todavía
             return [
                 'language' => 'en-us',
                 'open_links_new_tab' => 1
@@ -168,27 +255,31 @@ class SettingsService {
     }
 
     public function updatePreference($userId, $field, $value) {
+        // --- VALIDAR SPAM DE PREFERENCIAS ---
+        if (!$this->checkRateLimit('update_preference')) {
+            return ['success' => false, 'message' => 'js.profile.err_limit_prefs'];
+        }
+        // Registramos el intento (Max 15 cambios, bloquea 5 minutos)
+        $this->recordActionAttempt('update_preference', 15, 5);
+        // ------------------------------------
+
         $allowedFields = ['language', 'open_links_new_tab'];
         if (!in_array($field, $allowedFields)) {
             return ['success' => false, 'message' => 'Campo de preferencia no válido.'];
         }
 
-        // Validación estricta del lenguaje
         if ($field === 'language') {
             $allowedLangs = ['en-us', 'en-gb', 'fr-fr', 'de-de', 'it-it', 'es-latam', 'es-mx', 'es-es', 'pt-br', 'pt-pt'];
             if (!in_array($value, $allowedLangs)) {
-                $value = 'en-us'; // fallback forzado
+                $value = 'en-us'; 
             }
-            // NUEVO: Actualizamos cookie al instante
             setcookie('aurora_lang', $value, time() + 31536000, '/');
         }
 
-        // Validación booleana
         if ($field === 'open_links_new_tab') {
             $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 
-        // UPSERT: Si no existe el registro del usuario lo inserta, si ya existe lo actualiza.
         $stmt = $this->conn->prepare("
             INSERT INTO user_preferences (user_id, $field) 
             VALUES (:id, :val) 

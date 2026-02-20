@@ -104,5 +104,9 @@
   "js.auth.err_email_invalid": "El correo es inválido. Usa un dominio permitido ({allowed_email_domains}) y debe tener entre {min_email_local_length} y {max_email_local_length} caracteres antes del @.",
   "js.auth.err_pass_length": "La contraseña debe tener entre {min_password_length} y {max_password_length} caracteres.",
   "js.auth.err_user_length": "El nombre de usuario debe tener entre {min_username_length} y {max_username_length} caracteres.",
-  "js.auth.err_validation": "Los datos proporcionados no cumplen con los requisitos de seguridad."
+  "js.auth.err_validation": "Los datos proporcionados no cumplen con los requisitos de seguridad.",
+  "js.profile.err_limit_avatar": "Has alcanzado el límite de 3 cambios de foto por día. Intenta de nuevo mañana.",
+  "js.profile.err_limit_username": "Solo puedes cambiar tu nombre de usuario 1 vez cada 7 días.",
+  "js.profile.err_limit_email": "Solo puedes cambiar tu correo electrónico 1 vez cada 7 días.",
+  "js.profile.err_limit_prefs": "Has superado el límite de cambios de preferencias. Por favor, espera 5 minutos para volver a intentarlo."
 }

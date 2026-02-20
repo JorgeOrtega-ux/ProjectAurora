@@ -1,3 +1,4 @@
+// public/assets/js/preferences-controller.js
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
 
@@ -54,18 +55,31 @@ export class PreferencesController {
 
     saveLocally() {
         localStorage.setItem('aurora_prefs', JSON.stringify(this.prefs));
-        // Sincronizar Cookie con JS para PHP
         document.cookie = `aurora_lang=${this.prefs.language}; path=/; max-age=31536000; SameSite=Strict`;
     }
 
     async updatePreference(key, value) {
         const jsKey = key === 'open_links_new_tab' ? 'openLinksNewTab' : key;
+        const originalValue = this.prefs[jsKey]; // Guardamos el original por si falla
         const changed = this.prefs[jsKey] !== value;
+        
+        if (!changed) return;
+
+        // Actualizamos de forma optimista
         this.prefs[jsKey] = value;
         this.saveLocally(); 
 
+        let successBackend = true;
         if (this.isLoggedIn) {
-            await this.updateBackend(key, value);
+            successBackend = await this.updateBackend(key, value);
+        }
+        
+        // Si el backend lo rechaza (ej. Por Rate Limit), revertimos los cambios en JS y en UI
+        if (!successBackend) {
+            this.prefs[jsKey] = originalValue;
+            this.saveLocally();
+            this.syncUI(); // Forzamos a que los botones vuelvan a como estaban
+            return;
         }
         
         this.applyPreferencesToDOM();
@@ -80,10 +94,18 @@ export class PreferencesController {
         const csrfToken = document.getElementById('csrf_token_settings') 
             ? document.getElementById('csrf_token_settings').value 
             : (document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '');
-        if (!csrfToken) return;
+        if (!csrfToken) return false;
         try {
-            await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrf_token: csrfToken });
-        } catch (error) { console.error(error); }
+            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrf_token: csrfToken });
+            if (!res.success) {
+                alert(window.t(res.message));
+                return false;
+            }
+            return true;
+        } catch (error) { 
+            console.error(error); 
+            return false;
+        }
     }
 
     syncUI() {
