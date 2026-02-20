@@ -13,10 +13,6 @@ class AuthService {
         $this->conn = $db;
     }
 
-    // ==========================================
-    // SISTEMA DE RATE LIMITING Y SEGURIDAD
-    // ==========================================
-
     private function getUserIP() {
         if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
             return $_SERVER['HTTP_CLIENT_IP'];
@@ -77,10 +73,6 @@ class AuthService {
         $stmt = $this->conn->prepare($query);
         $stmt->execute([':ip' => $ip, ':action' => $action]);
     }
-
-    // ==========================================
-    // MÉTODOS DE AUTENTICACIÓN
-    // ==========================================
 
     public function checkEmail($email) {
         $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
@@ -169,6 +161,21 @@ class AuthService {
 
         if ($stmt->execute()) {
             $newUserId = $this->conn->lastInsertId();
+
+            // =================================================================================
+            // NUEVO: GUARDAR EN BASE DE DATOS LAS PREFERENCIAS DE CUANDO ERA INVITADO
+            // =================================================================================
+            $lang = $data->language ?? 'en-us';
+            // Validar que sea 1 o 0 (si viene boolean desde JS true/false)
+            $openLinks = isset($data->open_links_new_tab) && $data->open_links_new_tab ? 1 : 0;
+
+            $prefStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (:uid, :lang, :links)");
+            $prefStmt->execute([
+                ':uid'   => $newUserId,
+                ':lang'  => $lang,
+                ':links' => $openLinks
+            ]);
+            // =================================================================================
 
             $delQuery = "DELETE FROM verification_codes WHERE id = :id";
             $delStmt = $this->conn->prepare($delQuery);
@@ -295,7 +302,6 @@ class AuthService {
         $email = $row['identifier'];
         $codeId = $row['id'];
 
-        // Obtener la contraseña anterior para guardarla en el log de auditoría
         $userStmt = $this->conn->prepare("SELECT id, contrasena FROM " . $this->table_name . " WHERE correo = :correo");
         $userStmt->execute([':correo' => $email]);
         $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
@@ -311,7 +317,6 @@ class AuthService {
 
         if ($updStmt->execute()) {
             
-            // GUARDAR EL LOG DEL CAMBIO DE CONTRASEÑA CON COLUMNAS EN INGLÉS
             $logStmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, 'contrasena', :old_val, :new_val)");
             $logStmt->execute([
                 ':user_id' => $userId, 

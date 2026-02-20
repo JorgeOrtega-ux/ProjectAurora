@@ -25,7 +25,7 @@ export class AuthController {
             }
         });
 
-        // Envíos a través de clics en nuestros botones personalizados (sin usar etiquetas de formulario nativas)
+        // Envíos a través de clics en nuestros botones personalizados
         document.body.addEventListener('click', (e) => {
             if (e.target.closest('#btn-login')) { e.preventDefault(); this.handleLogin(); return; }
             if (e.target.closest('#btn-next-1')) { e.preventDefault(); this.handleRegisterStage1(); return; }
@@ -70,14 +70,12 @@ export class AuthController {
         
         if (!container || !codeBox) return;
 
-        // Ocultar pseudo-formularios y títulos normales
         formsToHide.forEach(form => {
             if (form) form.style.display = 'none';
         });
         const header = document.querySelector('.component-header-centered');
         if (header) header.style.display = 'none';
 
-        // Formatear JSON como en la imagen
         const jsonContent = `Route Error (${httpCode} ): {\n  "error": {\n    "message": "${message}",\n    "type": "${type}",\n    "param": null,\n    "code": "${codeStr}"\n  }\n}`;
         codeBox.textContent = jsonContent;
         container.style.display = 'flex';
@@ -95,11 +93,9 @@ export class AuthController {
 
         if (!stage1 || !stage2 || !stage3) return;
 
-        // Reset visibility (limpiar errores si el usuario regresó a la url original)
         if (header) header.style.display = 'block';
         if (fatalContainer) fatalContainer.style.display = 'none';
 
-        // 1. Restaurar datos desde sessionStorage
         const email = sessionStorage.getItem('reg_email') || '';
         const pass = sessionStorage.getItem('reg_password') || '';
         const user = sessionStorage.getItem('reg_username') || '';
@@ -109,7 +105,6 @@ export class AuthController {
         if (document.getElementById('reg-password')) document.getElementById('reg-password').value = pass;
         if (document.getElementById('reg-username')) document.getElementById('reg-username').value = user;
 
-        // 2. Determinar qué etapa mostrar ocultando todas primero
         stage1.style.display = 'none';
         stage2.style.display = 'none';
         stage3.style.display = 'none';
@@ -138,13 +133,11 @@ export class AuthController {
             setTimeout(() => document.getElementById('reg-code').focus(), 50);
 
         } else {
-            // Base /register
             stage1.style.display = 'flex';
             if (title) { title.textContent = 'Crear Cuenta'; subtitle.textContent = 'Regístrate para comenzar'; }
         }
     }
 
-    // --- LÓGICA DE CONTROL PARA RESET PASSWORD URL ---
     checkResetPasswordStage(url) {
         if (!url.includes('/ProjectAurora/reset-password')) return;
         
@@ -153,18 +146,15 @@ export class AuthController {
         const header = document.querySelector('.component-header-centered');
         const fatalContainer = document.getElementById('reset-fatal-error');
         
-        // Reset visibility
         if (fatalContainer) fatalContainer.style.display = 'none';
         if (header) header.style.display = 'block';
         if (form) form.style.display = 'flex';
 
-        // Validar si entró directamente sin proporcionar token en la URL
         if (!token) {
             this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid or missing token. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
         }
     }
 
-    // --- MANEJO DE REGISTRO ---
     async handleRegisterStage1() {
         const emailInput = document.getElementById('reg-email');
         const passwordInput = document.getElementById('reg-password');
@@ -183,7 +173,7 @@ export class AuthController {
             if (res.success) {
                 sessionStorage.setItem('reg_email', emailInput.value);
                 sessionStorage.setItem('reg_password', passwordInput.value);
-                this.router.navigate('/ProjectAurora/register/aditional-data'); // Cambia URL
+                this.router.navigate('/ProjectAurora/register/aditional-data'); 
             } else {
                 this.showError(errorDiv, res.message);
             }
@@ -210,7 +200,7 @@ export class AuthController {
             if (res.success) {
                 sessionStorage.setItem('reg_username', usernameInput.value);
                 sessionStorage.setItem('reg_dev_code', res.dev_code);
-                this.router.navigate('/ProjectAurora/register/verification-account'); // Cambia URL
+                this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, res.message); }
         } catch (error) { this.showError(errorDiv, 'Error al generar el código.'); } 
         finally { this.setLoading(btn, false); }
@@ -228,16 +218,31 @@ export class AuthController {
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
+        // --- NUEVO: Extraer preferencias configuradas como invitado ---
+        let prefsLocal = { language: 'en-us', openLinksNewTab: true };
+        const localData = localStorage.getItem('aurora_prefs');
+        if (localData) {
+            try { prefsLocal = JSON.parse(localData); } catch(e){}
+        }
+        // ---------------------------------------------------------------
+
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { email, code, csrf_token: csrfToken });
+            // Mandamos los datos de las preferencias en el payload
+            const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { 
+                email, 
+                code, 
+                csrf_token: csrfToken,
+                language: prefsLocal.language,
+                open_links_new_tab: prefsLocal.openLinksNewTab
+            });
+
             if (res.success) {
-                sessionStorage.clear(); // Limpiar datos temporales
+                sessionStorage.clear(); 
                 window.location.href = '/ProjectAurora/';
             } else { this.showError(errorDiv, res.message); this.setLoading(btn, false); }
         } catch (error) { this.showError(errorDiv, 'Error de conexión.'); this.setLoading(btn, false); }
     }
 
-    // --- MÉTODOS EXISTENTES INTACTOS (Login, Forgot, Reset) ---
     async handleLogin() {
         const btn = document.getElementById('btn-login'); 
         const email = document.getElementById('login-email').value;
@@ -260,13 +265,10 @@ export class AuthController {
         } catch (error) { this.showError(errorDiv, 'Error de conexión.'); this.setLoading(btn, false); }
     }
 
-    // --- MANEJO DE CERRAR SESIÓN CON SPINNER ---
     async handleLogout(btn) {
-        // Prevenir múltiples peticiones
         if (btn.classList.contains('is-loading')) return;
         btn.classList.add('is-loading');
 
-        // Generamos el nuevo div dinámicamente y lo adjuntamos al menú link
         const spinnerContainer = document.createElement('div');
         spinnerContainer.className = 'component-menu-link-icon';
         spinnerContainer.innerHTML = '<div class="component-spinner-button dark-spinner"></div>';
@@ -275,13 +277,11 @@ export class AuthController {
 
         try { 
             await ApiService.post(API_ROUTES.AUTH.LOGOUT); 
-            // Añadimos un pequeño timeout de 400ms para que la animación alcance a ser apreciable
             setTimeout(() => {
                 window.location.href = '/ProjectAurora/login'; 
             }, 400);
         } catch (error) { 
             console.error(error); 
-            // Si falla, removemos el spinner para permitir reintentar
             btn.classList.remove('is-loading');
             spinnerContainer.remove();
         }
@@ -324,7 +324,6 @@ export class AuthController {
 
         this.hideError(errorDiv);
         
-        // Bloqueo de seguridad si de alguna manera pasaron el chequeo de carga
         if (!token) { 
             this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
             return; 
@@ -340,14 +339,12 @@ export class AuthController {
                 successDiv.style.display = 'block'; btn.style.display = 'none';
                 setTimeout(() => window.location.href = '/ProjectAurora/login', 2000);
             } else { 
-                // AQUÍ interceptamos si el token es viejo o ya se usó (la API regresó success: false)
                 this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, res.message, 'invalid_request_error', 'token_expired_or_used', [form]);
                 this.setLoading(btn, false); 
             }
         } catch (error) { this.showError(errorDiv, 'Error al actualizar.'); this.setLoading(btn, false); }
     }
 
-    // --- UTILIDADES ---
     setLoading(btn, isLoading) {
         if(!btn) return;
         if (isLoading) {

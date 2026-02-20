@@ -9,7 +9,6 @@ export class ProfileController {
 
     init() {
         document.body.addEventListener('click', (e) => {
-            
             // ===============================================
             // GESTIÓN DEL AVATAR
             // ===============================================
@@ -51,7 +50,6 @@ export class ProfileController {
             const btnCancelEdit = e.target.closest('[data-action="cancel-edit"]');
             if (btnCancelEdit) { e.preventDefault(); this.handleCancelEdit(btnCancelEdit.dataset.target); return; }
 
-            // NUEVO: Envío a la base de datos
             const btnSaveField = e.target.closest('[data-action="save-field"]');
             if (btnSaveField) { e.preventDefault(); this.handleSaveField(btnSaveField.dataset.target); return; }
 
@@ -59,12 +57,28 @@ export class ProfileController {
             if (triggerSelector) { e.preventDefault(); this.handleDropdownToggle(triggerSelector, e); return; }
 
             const optionSelect = e.target.closest('[data-action="select-option"]');
-            if (optionSelect) { e.preventDefault(); this.handleOptionSelect(optionSelect); return; }
+            if (optionSelect) { 
+                e.preventDefault(); 
+                this.handleOptionSelect(optionSelect); 
+                
+                // NOTIFICAR AL CONTROLADOR DE PREFERENCIAS (NUEVO)
+                if (window.preferencesController) {
+                    window.preferencesController.updatePreference('language', optionSelect.dataset.value);
+                }
+                return; 
+            }
         });
 
         document.body.addEventListener('change', (e) => {
             if (e.target.id === 'upload-avatar') {
                 this.handleFileSelection(e.target);
+            }
+
+            // NOTIFICAR AL CONTROLADOR DE PREFERENCIAS PARA SWITCH (NUEVO)
+            if (e.target.id === 'pref-open-links' || e.target.id === 'pref-open-links-guest') {
+                if (window.preferencesController) {
+                    window.preferencesController.updatePreference('open_links_new_tab', e.target.checked);
+                }
             }
         });
 
@@ -73,10 +87,6 @@ export class ProfileController {
             if (filterInput) this.handleFilter(filterInput);
         });
     }
-
-    /* ========================================================================
-       LÓGICA DEL AVATAR
-       ======================================================================== */
 
     handleFileSelection(input) {
         const file = input.files[0];
@@ -200,10 +210,6 @@ export class ProfileController {
         }
     }
 
-    /* ========================================================================
-       LÓGICA ACTUALIZADA DE EDICIÓN DE CAMPOS
-       ======================================================================== */
-
     toggleFieldState(target, mode) {
         const viewState = document.querySelector(`[data-state="${target}-view-state"]`);
         const editState = document.querySelector(`[data-state="${target}-edit-state"]`);
@@ -236,7 +242,6 @@ export class ProfileController {
         this.toggleFieldState(target, 'view');
     }
 
-    // NUEVO: API Request para guardar cambios
     async handleSaveField(target) {
         const inputEl = document.getElementById(`input-${target}`);
         const displayEl = document.getElementById(`display-${target}`);
@@ -251,12 +256,9 @@ export class ProfileController {
         }
 
         const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
-        
-        // Mapear los identificadores del Frontend a las columnas SQL
         const fieldMap = { 'username': 'nombre', 'email': 'correo' };
         const apiField = fieldMap[target];
 
-        // Spinner Loading Effect
         const originalText = btnSave.textContent;
         btnSave.disabled = true;
         btnSave.innerHTML = '<div class="component-spinner-button"></div>';
@@ -269,12 +271,9 @@ export class ProfileController {
             });
             
             if (res.success) {
-                // Actualiza el span de solo lectura con lo validado por el backend
                 displayEl.textContent = res.newValue;
                 this.toggleFieldState(target, 'view');
-            } else {
-                alert(res.message);
-            }
+            } else { alert(res.message); }
         } catch (error) {
             alert('Error al actualizar el campo en la base de datos.');
         } finally {

@@ -37,7 +37,6 @@ return function($dbConnection, $action) {
             Utils::sendResponse($settings->deleteAvatar($userId));
             break;
 
-        // NUEVO: Handler para actualizar campos de texto
         case 'update_field':
             $data = Utils::getJsonInput();
             if (!Utils::validateCSRF($data->csrf_token ?? '')) {
@@ -47,6 +46,23 @@ return function($dbConnection, $action) {
                 Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
             }
             Utils::sendResponse($settings->updateField($userId, $data->field, $data->value));
+            break;
+
+        // NUEVO: Obtener preferencias del usuario
+        case 'get_preferences':
+            Utils::sendResponse(['success' => true, 'preferences' => $settings->getPreferences($userId)]);
+            break;
+
+        // NUEVO: Actualizar preferencia del usuario
+        case 'update_preference':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->field) || !isset($data->value)) {
+                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            Utils::sendResponse($settings->updatePreference($userId, $data->field, $data->value));
             break;
 
         default:

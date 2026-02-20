@@ -13,8 +13,10 @@ return [
     // --- RUTAS DE SETTINGS ---
     'settings.upload_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'upload_avatar'],
     'settings.delete_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'delete_avatar'],
+    'settings.update_field'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_field'],
     
-    // NUEVO: Ruta genérica para modificar textos
-    'settings.update_field'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_field']
+    // --- RUTAS DE PREFERENCIAS ---
+    'settings.get_preferences'    => ['file' => 'handler/settings-handler.php', 'action' => 'get_preferences'],
+    'settings.update_preference'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_preference']
 ];
 ?>

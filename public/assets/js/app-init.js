@@ -2,7 +2,8 @@
 import { MainController } from './main-controller.js';
 import { SpaRouter } from './spa-router.js';
 import { AuthController } from './auth-controller.js';
-import { ProfileController } from './profile-controller.js'; // <-- 1. Importar
+import { ProfileController } from './profile-controller.js';
+import { PreferencesController } from './preferences-controller.js'; // <-- Importamos
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -12,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const auth = new AuthController(router); 
-    
-    // 2. Inicializar el controlador del perfil
     const profile = new ProfileController(); 
+    
+    // Inicializar el controlador de preferencias y hacerlo global
+    window.preferencesController = new PreferencesController(); 
 });

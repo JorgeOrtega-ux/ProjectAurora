@@ -12,7 +12,6 @@ class SettingsService {
         $this->conn = $db;
     }
 
-    // Método privado para registrar en el Log de Auditoría usando nombres de columnas en inglés
     private function logChange($userId, $field, $oldValue, $newValue) {
         $stmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, :field, :old_val, :new_val)");
         $stmt->execute([
@@ -74,17 +73,9 @@ class SettingsService {
 
         $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
         if ($updStmt->execute([':path' => $webPath, ':id' => $userId])) {
-            
-            // Guardar el registro en el log
             $this->logChange($userId, 'avatar', $oldAvatar, $webPath);
-            
             $_SESSION['user_avatar'] = $webPath;
-
-            return [
-                'success' => true,
-                'message' => 'Foto de perfil actualizada correctamente.',
-                'avatar' => $webPath 
-            ];
+            return ['success' => true, 'message' => 'Foto de perfil actualizada correctamente.', 'avatar' => $webPath];
         }
 
         return ['success' => false, 'message' => 'Error interno al actualizar la base de datos.'];
@@ -112,17 +103,9 @@ class SettingsService {
 
         $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
         if ($updStmt->execute([':path' => $newWebPath, ':id' => $userId])) {
-            
-            // Guardar el registro en el log
             $this->logChange($userId, 'avatar', $oldAvatar, $newWebPath);
-            
             $_SESSION['user_avatar'] = $newWebPath;
-
-            return [
-                'success' => true,
-                'message' => 'Foto de perfil eliminada. Se restauró a predeterminada.',
-                'avatar' => $newWebPath
-            ];
+            return ['success' => true, 'message' => 'Foto de perfil eliminada.', 'avatar' => $newWebPath];
         }
 
         return ['success' => false, 'message' => 'Error al restaurar el avatar.'];
@@ -130,18 +113,11 @@ class SettingsService {
 
     public function updateField($userId, $field, $newValue) {
         $allowedFields = ['nombre', 'correo'];
-        
-        if (!in_array($field, $allowedFields)) {
-            return ['success' => false, 'message' => 'Campo no válido.'];
-        }
+        if (!in_array($field, $allowedFields)) { return ['success' => false, 'message' => 'Campo no válido.']; }
 
         $newValue = trim($newValue);
+        if (empty($newValue)) { return ['success' => false, 'message' => 'El valor no puede estar vacío.']; }
 
-        if (empty($newValue)) {
-            return ['success' => false, 'message' => 'El valor no puede estar vacío.'];
-        }
-
-        // Si es correo, validar formato y que no esté en uso
         if ($field === 'correo') {
             if (!filter_var($newValue, FILTER_VALIDATE_EMAIL)) {
                 return ['success' => false, 'message' => 'Formato de correo inválido.'];
@@ -149,11 +125,10 @@ class SettingsService {
             $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo AND id != :id");
             $checkStmt->execute([':correo' => $newValue, ':id' => $userId]);
             if ($checkStmt->rowCount() > 0) {
-                return ['success' => false, 'message' => 'El correo ya está en uso por otra cuenta.'];
+                return ['success' => false, 'message' => 'El correo ya está en uso.'];
             }
         }
 
-        // Obtener el valor actual para compararlo y guardarlo en el log
         $stmt = $this->conn->prepare("SELECT $field FROM users WHERE id = :id");
         $stmt->execute([':id' => $userId]);
         $oldValue = $stmt->fetchColumn();
@@ -162,25 +137,67 @@ class SettingsService {
             return ['success' => true, 'message' => 'No hubo cambios.', 'newValue' => $newValue];
         }
 
-        // Actualizar en base de datos
         $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
-        
         if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
-            
-            // GUARDAR REGISTRO DE AUDITORÍA
             $this->logChange($userId, $field, $oldValue, $newValue);
-
-            // Actualizar variables de sesión activas
-            if ($field === 'nombre') {
-                $_SESSION['user_name'] = $newValue;
-            } else if ($field === 'correo') {
-                $_SESSION['user_email'] = $newValue;
-            }
-
+            if ($field === 'nombre') { $_SESSION['user_name'] = $newValue; }
+            else if ($field === 'correo') { $_SESSION['user_email'] = $newValue; }
             return ['success' => true, 'message' => 'Actualizado correctamente.', 'newValue' => $newValue];
         }
 
-        return ['success' => false, 'message' => 'Error al actualizar el campo en la base de datos.'];
+        return ['success' => false, 'message' => 'Error al actualizar el campo.'];
+    }
+
+    // ==========================================
+    // NUEVO: SISTEMA DE PREFERENCIAS
+    // ==========================================
+
+    public function getPreferences($userId) {
+        $stmt = $this->conn->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = :id");
+        $stmt->execute([':id' => $userId]);
+        $prefs = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$prefs) {
+            // Retorna valores por defecto si no ha guardado ninguna preferencia todavía
+            return [
+                'language' => 'en-us',
+                'open_links_new_tab' => 1
+            ];
+        }
+        return $prefs;
+    }
+
+    public function updatePreference($userId, $field, $value) {
+        $allowedFields = ['language', 'open_links_new_tab'];
+        if (!in_array($field, $allowedFields)) {
+            return ['success' => false, 'message' => 'Campo de preferencia no válido.'];
+        }
+
+        // Validación estricta del lenguaje
+        if ($field === 'language') {
+            $allowedLangs = ['en-us', 'en-gb', 'fr-fr', 'de-de', 'it-it', 'es-latam', 'es-mx', 'es-es', 'pt-br', 'pt-pt'];
+            if (!in_array($value, $allowedLangs)) {
+                $value = 'en-us'; // fallback forzado
+            }
+        }
+
+        // Validación booleana
+        if ($field === 'open_links_new_tab') {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
+
+        // UPSERT: Si no existe el registro del usuario lo inserta, si ya existe lo actualiza.
+        $stmt = $this->conn->prepare("
+            INSERT INTO user_preferences (user_id, $field) 
+            VALUES (:id, :val) 
+            ON DUPLICATE KEY UPDATE $field = :val2
+        ");
+
+        if ($stmt->execute([':id' => $userId, ':val' => $value, ':val2' => $value])) {
+            return ['success' => true, 'message' => 'Preferencia guardada exitosamente.'];
+        }
+
+        return ['success' => false, 'message' => 'Error de base de datos al guardar preferencia.'];
     }
 }
 ?>
