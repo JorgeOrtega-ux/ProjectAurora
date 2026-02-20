@@ -9,7 +9,11 @@ export const API_ROUTES = {
         LOGIN: `${BASE_PATH}/api/auth.login`,
         LOGOUT: `${BASE_PATH}/api/auth.logout`,
         CHECK_SESSION: `${BASE_PATH}/api/auth.check_session`,
-        FORGOT_PASSWORD: `${BASE_PATH}/api/auth.forgot_password`, // NUEVA
-        RESET_PASSWORD: `${BASE_PATH}/api/auth.reset_password`    // NUEVA
+        FORGOT_PASSWORD: `${BASE_PATH}/api/auth.forgot_password`,
+        RESET_PASSWORD: `${BASE_PATH}/api/auth.reset_password`
+    },
+    SETTINGS: {
+        UPLOAD_AVATAR: `${BASE_PATH}/api/settings.upload_avatar`,
+        DELETE_AVATAR: `${BASE_PATH}/api/settings.delete_avatar`
     }
 };

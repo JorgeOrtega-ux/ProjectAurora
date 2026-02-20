@@ -2,16 +2,26 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Recuperamos datos de sesión disponibles para una integración más fluida
+
 $userName = $_SESSION['user_name'] ?? 'Usuario';
-$userAvatar = $_SESSION['user_avatar'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($userName) . '&background=random';
+$userAvatar = $_SESSION['user_avatar'] ?? '';
 $userRole = $_SESSION['user_role'] ?? 'user';
-// Puedes reemplazar esto con el correo real cuando lo agregues a la sesión
 $userEmail = 'jorge@uat.edu.mx'; 
+
+// Formateamos el path para que siempre incluya el nombre de tu proyecto
+$formattedAvatar = '/ProjectAurora/' . ltrim($userAvatar, '/');
+
+// Saber si el avatar actual es el de por defecto o uno subido
+$isDefaultAvatar = (strpos($userAvatar, '/default/') !== false);
+
+$stateDefaultClass = $isDefaultAvatar ? 'active' : 'disabled';
+$stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
 ?>
 
 <div class="view-content">
     <div class="component-wrapper">
+
+        <input type="hidden" id="csrf_token_settings" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 
         <div class="component-header-card">
             <h1 class="component-page-title">Tu Perfil</h1>
@@ -22,21 +32,22 @@ $userEmail = 'jorge@uat.edu.mx';
             <div class="component-group-item" data-component="profile-picture-section">
                  <div class="component-card__content">
                     <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($userRole); ?>">
-                        <img src="<?php echo htmlspecialchars($userAvatar); ?>" class="component-card__avatar-image" id="preview-avatar">
+                        <img src="<?php echo htmlspecialchars($formattedAvatar); ?>" data-original-src="<?php echo htmlspecialchars($formattedAvatar); ?>" class="component-card__avatar-image" id="preview-avatar">
                         <div class="component-card__avatar-overlay" id="btn-trigger-upload">
                             <span class="material-symbols-rounded">photo_camera</span>
                         </div>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title">Foto de perfil</h2>
-                        <p class="component-card__description">Se recomienda una imagen cuadrada en formato PNG o JPG.</p>
+                        <p class="component-card__description">Se recomienda una imagen cuadrada de máximo 2MB (PNG o JPG).</p>
                     </div>
                 </div>
 
                 <input type="file" id="upload-avatar" accept="image/png, image/jpeg, image/webp, image/gif" hidden>
 
                 <div class="component-card__actions actions-right">
-                    <div class="component-action-group active" data-state="profile-picture-actions-default">
+                    
+                    <div class="component-action-group <?php echo $stateDefaultClass; ?>" data-state="profile-picture-actions-default">
                         <button type="button" class="component-button primary" id="btn-upload-init">
                             Subir foto
                         </button>
@@ -47,9 +58,9 @@ $userEmail = 'jorge@uat.edu.mx';
                         <button type="button" class="component-button primary" data-action="profile-picture-save">Guardar</button>
                     </div>
 
-                    <div class="component-action-group disabled" data-state="profile-picture-actions-custom">
+                    <div class="component-action-group <?php echo $stateCustomClass; ?>" data-state="profile-picture-actions-custom">
                         <button type="button" class="component-button" data-action="profile-picture-delete" style="color: #d32f2f; border-color: #d32f2f30;">
-                            Eliminar foto
+                            Eliminar
                         </button>
                         <button type="button" class="component-button primary" data-action="profile-picture-change">
                             Cambiar foto
@@ -128,55 +139,24 @@ $userEmail = 'jorge@uat.edu.mx';
                         
                         <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
                             <div class="component-module-panel">
-                                
-                                <div class="pill-container">
-                                    <div class="drag-handle"></div>
-                                </div>
-
+                                <div class="pill-container"><div class="drag-handle"></div></div>
                                 <div class="component-module-panel-header--search">
                                     <div class="component-input-wrapper component-input-wrapper--search">
-                                        <input type="text" 
-                                               class="component-text-input component-text-input--simple" 
-                                               placeholder="Buscar idioma..." 
-                                               data-action="filter-options"> 
+                                        <input type="text" class="component-text-input component-text-input--simple" placeholder="Buscar idioma..." data-action="filter-options"> 
                                     </div>
                                 </div>
-
                                 <div class="component-module-panel-body component-module-panel-body--padded">
                                     <div class="component-menu-list overflow-y component-menu-list--dropdown">
                                         <div class="component-menu-link active" data-action="select-option" data-value="es-latam" data-label="Español (Latinoamérica)">
-                                            <div class="component-menu-link-icon">
-                                                <span class="material-symbols-rounded">language</span>
-                                            </div>
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                             <div class="component-menu-link-text"><span>Español (Latinoamérica)</span></div>
                                         </div>
                                         <div class="component-menu-link" data-action="select-option" data-value="es-mx" data-label="Español (México)">
-                                            <div class="component-menu-link-icon">
-                                                <span class="material-symbols-rounded">language</span>
-                                            </div>
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                             <div class="component-menu-link-text"><span>Español (México)</span></div>
-                                        </div>
-                                        <div class="component-menu-link" data-action="select-option" data-value="en-us" data-label="English (United States)">
-                                            <div class="component-menu-link-icon">
-                                                <span class="material-symbols-rounded">translate</span>
-                                            </div>
-                                            <div class="component-menu-link-text"><span>English (United States)</span></div>
-                                        </div>
-                                        <div class="component-menu-link" data-action="select-option" data-value="en-gb" data-label="English (United Kingdom)">
-                                            <div class="component-menu-link-icon">
-                                                <span class="material-symbols-rounded">translate</span>
-                                            </div>
-                                            <div class="component-menu-link-text"><span>English (United Kingdom)</span></div>
-                                        </div>
-                                        <div class="component-menu-link" data-action="select-option" data-value="fr-fr" data-label="Français (France)">
-                                            <div class="component-menu-link-icon">
-                                                <span class="material-symbols-rounded">translate</span>
-                                            </div>
-                                            <div class="component-menu-link-text"><span>Français (France)</span></div>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>

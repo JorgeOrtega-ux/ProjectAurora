@@ -1,4 +1,6 @@
 // public/assets/js/profile-controller.js
+import { ApiService } from './api-services.js';
+import { API_ROUTES } from './api-routes.js';
 
 export class ProfileController {
     constructor() {
@@ -6,62 +8,211 @@ export class ProfileController {
     }
 
     init() {
-        // Usamos delegación de eventos en el body para que funcione con la SPA
-        // sin importar cuándo el Router inyecte el HTML
         document.body.addEventListener('click', (e) => {
             
-            // 1. Iniciar edición
+            // ===============================================
+            // GESTIÓN DEL AVATAR
+            // ===============================================
+            
+            // Disparar input de archivo
+            if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
+                e.preventDefault();
+                const fileInput = document.getElementById('upload-avatar');
+                if (fileInput) fileInput.click();
+                return;
+            }
+
+            // Cancelar selección de avatar
+            if (e.target.closest('[data-action="profile-picture-cancel"]')) {
+                e.preventDefault();
+                this.cancelAvatarChange();
+                return;
+            }
+
+            // Guardar el avatar nuevo
+            const btnSaveAvatar = e.target.closest('[data-action="profile-picture-save"]');
+            if (btnSaveAvatar) {
+                e.preventDefault();
+                this.saveAvatar(btnSaveAvatar);
+                return;
+            }
+
+            // Eliminar Avatar Customizado
+            const btnDeleteAvatar = e.target.closest('[data-action="profile-picture-delete"]');
+            if (btnDeleteAvatar) {
+                e.preventDefault();
+                if(confirm("¿Estás seguro de que deseas eliminar tu foto de perfil?")) {
+                    this.deleteAvatar(btnDeleteAvatar);
+                }
+                return;
+            }
+
+            // ===============================================
+            // OTROS CAMPOS DE TEXTO
+            // ===============================================
             const btnStartEdit = e.target.closest('[data-action="start-edit"]');
-            if (btnStartEdit) {
-                e.preventDefault();
-                this.handleStartEdit(btnStartEdit.dataset.target);
-                return;
-            }
+            if (btnStartEdit) { e.preventDefault(); this.handleStartEdit(btnStartEdit.dataset.target); return; }
 
-            // 2. Cancelar edición
             const btnCancelEdit = e.target.closest('[data-action="cancel-edit"]');
-            if (btnCancelEdit) {
-                e.preventDefault();
-                this.handleCancelEdit(btnCancelEdit.dataset.target);
-                return;
-            }
+            if (btnCancelEdit) { e.preventDefault(); this.handleCancelEdit(btnCancelEdit.dataset.target); return; }
 
-            // 3. Guardar campo
             const btnSaveField = e.target.closest('[data-action="save-field"]');
-            if (btnSaveField) {
-                e.preventDefault();
-                this.handleSaveField(btnSaveField.dataset.target);
-                return;
-            }
+            if (btnSaveField) { e.preventDefault(); this.handleSaveField(btnSaveField.dataset.target); return; }
 
-            // 4. Toggle Dropdown de idioma (Nuevo Componente Nativo)
             const triggerSelector = e.target.closest('[data-action="toggle-dropdown"]');
-            if (triggerSelector) {
-                e.preventDefault();
-                this.handleDropdownToggle(triggerSelector, e);
-                return;
-            }
+            if (triggerSelector) { e.preventDefault(); this.handleDropdownToggle(triggerSelector, e); return; }
 
-            // 5. Seleccionar opción de idioma
             const optionSelect = e.target.closest('[data-action="select-option"]');
-            if (optionSelect) {
-                e.preventDefault();
-                this.handleOptionSelect(optionSelect);
-                return;
+            if (optionSelect) { e.preventDefault(); this.handleOptionSelect(optionSelect); return; }
+        });
+
+        // Escuchador exclusivo para cuando el usuario escoge un archivo
+        document.body.addEventListener('change', (e) => {
+            if (e.target.id === 'upload-avatar') {
+                this.handleFileSelection(e.target);
             }
         });
 
-        // Evento 'input' para el buscador del dropdown
         document.body.addEventListener('input', (e) => {
             const filterInput = e.target.closest('[data-action="filter-options"]');
-            if (filterInput) {
-                this.handleFilter(filterInput);
-            }
+            if (filterInput) this.handleFilter(filterInput);
         });
     }
 
     /* ========================================================================
-       MÉTODOS DE ESTADO: VER / EDITAR
+       LÓGICA DEL AVATAR
+       ======================================================================== */
+
+    handleFileSelection(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        // Limite de 2MB
+        if (file.size > 2 * 1024 * 1024) {
+            alert('La imagen no puede pesar más de 2MB.');
+            input.value = ''; // Limpiar el input
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('preview-avatar');
+            if (preview) preview.src = e.target.result;
+            this.switchAvatarControlsState('preview');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    cancelAvatarChange() {
+        const preview = document.getElementById('preview-avatar');
+        const input = document.getElementById('upload-avatar');
+        if (input) input.value = ''; 
+        if (preview) {
+            const originalSrc = preview.getAttribute('data-original-src');
+            preview.src = originalSrc;
+            
+            // Decidir a qué estado volver
+            if (originalSrc.includes('/default/')) {
+                this.switchAvatarControlsState('default');
+            } else {
+                this.switchAvatarControlsState('custom');
+            }
+        }
+    }
+
+    async saveAvatar(btn) {
+        const input = document.getElementById('upload-avatar');
+        const file = input.files[0];
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+
+        if (!file) return;
+
+        // Estado Loading
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+        formData.append('csrf_token', csrfToken);
+
+        try {
+            const res = await ApiService.postFormData(API_ROUTES.SETTINGS.UPLOAD_AVATAR, formData);
+            
+            if (res.success) {
+                // Actualizar imagen principal y Header
+                this.updateAvatarVisuals(res.avatar);
+                this.switchAvatarControlsState('custom'); // Ya que es subida, se va a estado custom
+            } else {
+                alert(res.message);
+                this.cancelAvatarChange(); // Revertir a anterior si falla
+            }
+        } catch (error) {
+            alert('Error de red al subir la imagen.');
+            this.cancelAvatarChange();
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            input.value = '';
+        }
+    }
+
+    async deleteAvatar(btn) {
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button dark-spinner"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.DELETE_AVATAR, { csrf_token: csrfToken });
+            if (res.success) {
+                this.updateAvatarVisuals(res.avatar);
+                this.switchAvatarControlsState('default');
+            } else {
+                alert(res.message);
+            }
+        } catch (error) {
+            alert('Error al procesar la solicitud.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    updateAvatarVisuals(newPath) {
+        const preview = document.getElementById('preview-avatar');
+        const headerAvatar = document.getElementById('user-avatar-img');
+
+        // Forzar que la ruta final SIEMPRE contenga /ProjectAurora/
+        let finalPath = newPath;
+        if (!finalPath.startsWith('/ProjectAurora/')) {
+            // Remueve cualquier barra inicial y le agrega el base path
+            finalPath = '/ProjectAurora/' + finalPath.replace(/^\//, '');
+        }
+
+        if (preview) {
+            preview.src = finalPath;
+            preview.setAttribute('data-original-src', finalPath);
+        }
+        if (headerAvatar) {
+            headerAvatar.src = finalPath;
+        }
+    }
+
+    switchAvatarControlsState(state) {
+        document.querySelectorAll('[data-state^="profile-picture-actions-"]').forEach(el => {
+            el.classList.replace('active', 'disabled');
+        });
+
+        const target = document.querySelector(`[data-state="profile-picture-actions-${state}"]`);
+        if (target) {
+            target.classList.replace('disabled', 'active');
+        }
+    }
+
+    /* ========================================================================
+       LÓGICA EXISTENTE DE EDICIÓN DE CAMPOS
        ======================================================================== */
 
     toggleFieldState(target, mode) {
@@ -77,7 +228,6 @@ export class ProfileController {
             viewActions.classList.replace('active', 'disabled');
             editState.classList.replace('disabled', 'active');
             editActions.classList.replace('disabled', 'active');
-            
             const input = document.getElementById(`input-${target}`);
             if (input) input.focus();
         } else {
@@ -88,46 +238,33 @@ export class ProfileController {
         }
     }
 
-    handleStartEdit(target) {
-        this.toggleFieldState(target, 'edit');
-    }
-
+    handleStartEdit(target) { this.toggleFieldState(target, 'edit'); }
     handleCancelEdit(target) {
         const originalValue = document.getElementById(`display-${target}`).textContent;
         const inputEl = document.getElementById(`input-${target}`);
         if (inputEl) inputEl.value = originalValue;
-        
         this.toggleFieldState(target, 'view');
     }
 
     handleSaveField(target) {
         const inputEl = document.getElementById(`input-${target}`);
         const displayEl = document.getElementById(`display-${target}`);
-        
         if (!inputEl || !displayEl) return;
 
         const newValue = inputEl.value.trim();
-
         if (newValue !== "") {
             displayEl.textContent = newValue;
             this.toggleFieldState(target, 'view');
-            console.log(`[API Simulación] ${target} guardado como: ${newValue}`);
         } else {
             alert("El campo no puede estar vacío"); 
         }
     }
 
-    /* ========================================================================
-       MÉTODOS DEL DROPDOWN DE IDIOMA
-       ======================================================================== */
-
     handleDropdownToggle(selector, event) {
-        event.stopPropagation(); // Previene que el main-controller lo cierre automáticamente
+        event.stopPropagation();
         const wrapper = selector.closest('.component-dropdown');
         const module = wrapper.querySelector('.component-module');
-        
         this.closeAllDropdowns(module);
-        
         if (module) module.classList.toggle('disabled');
     }
 
@@ -135,31 +272,19 @@ export class ProfileController {
         const wrapper = option.closest('.component-dropdown');
         const module = wrapper.querySelector('.component-module');
         const textDisplay = wrapper.querySelector('.component-dropdown-text');
-        
-        const selectedValue = option.dataset.value;
-        const selectedLabel = option.dataset.label;
-        
-        textDisplay.textContent = selectedLabel;
+        textDisplay.textContent = option.dataset.label;
         
         module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
         option.classList.add('active');
-        
         module.classList.add('disabled');
-        
-        console.log(`[API Simulación] Idioma cambiado a: ${selectedValue}`);
     }
 
     handleFilter(searchInput) {
         const module = searchInput.closest('.component-module');
         const term = searchInput.value.toLowerCase().trim();
-        
         module.querySelectorAll('.component-menu-link').forEach(link => {
             const label = link.dataset.label.toLowerCase();
-            if (label.includes(term)) {
-                link.style.display = 'flex';
-            } else {
-                link.style.display = 'none';
-            }
+            link.style.display = label.includes(term) ? 'flex' : 'none';
         });
     }
 
