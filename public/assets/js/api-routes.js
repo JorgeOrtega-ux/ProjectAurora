@@ -19,8 +19,11 @@ export const API_ROUTES = {
         REQUEST_EMAIL_CHANGE: `${BASE_PATH}/api/settings.request_email_change`,
         CONFIRM_EMAIL_CHANGE: `${BASE_PATH}/api/settings.confirm_email_change`,
         
-        // NUEVAS RUTAS DE PREFERENCIAS
         GET_PREFERENCES: `${BASE_PATH}/api/settings.get_preferences`,
-        UPDATE_PREFERENCE: `${BASE_PATH}/api/settings.update_preference` 
+        UPDATE_PREFERENCE: `${BASE_PATH}/api/settings.update_preference`,
+
+        // RUTAS DE SEGURIDAD Y CONTRASEÑA
+        VERIFY_PASSWORD: `${BASE_PATH}/api/settings.verify_password`,
+        UPDATE_PASSWORD: `${BASE_PATH}/api/settings.update_password`
     }
 };

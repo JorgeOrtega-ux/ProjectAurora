@@ -19,6 +19,10 @@ return [
     
     // --- RUTAS DE PREFERENCIAS ---
     'settings.get_preferences'    => ['file' => 'handler/settings-handler.php', 'action' => 'get_preferences'],
-    'settings.update_preference'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_preference']
+    'settings.update_preference'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_preference'],
+
+    // --- RUTAS DE SEGURIDAD ---
+    'settings.verify_password'    => ['file' => 'handler/settings-handler.php', 'action' => 'verify_password'],
+    'settings.update_password'    => ['file' => 'handler/settings-handler.php', 'action' => 'update_password']
 ];
 ?>

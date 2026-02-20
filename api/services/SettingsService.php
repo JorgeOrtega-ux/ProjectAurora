@@ -393,7 +393,63 @@ class SettingsService {
         }
         return $prefs;
     }
+// ==========================================
+    // SISTEMA DE SEGURIDAD (CONTRASEÑAS)
+    // ==========================================
 
+    public function verifyPassword($userId, $password) {
+        if (!$this->checkRateLimit('verify_password')) {
+            return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.'];
+        }
+
+        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $hash = $stmt->fetchColumn();
+
+        if (password_verify($password, $hash)) {
+            $this->resetAttempts('verify_password');
+            return ['success' => true];
+        }
+
+        // Permitimos hasta 5 intentos antes de bloquear por 5 minutos
+        $this->recordActionAttempt('verify_password', 5, 5);
+        return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
+    }
+
+    public function updatePassword($userId, $currentPassword, $newPassword) {
+        if (!$this->checkRateLimit('update_password')) {
+            return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.'];
+        }
+
+        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $hash = $stmt->fetchColumn();
+
+        if (!password_verify($currentPassword, $hash)) {
+            $this->recordActionAttempt('update_password', 5, 5);
+            return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
+        }
+
+        // Validaciones dinámicas de longitud
+        global $APP_CONFIG;
+        $min = (int)($APP_CONFIG['min_password_length'] ?? 12);
+        $max = (int)($APP_CONFIG['max_password_length'] ?? 64);
+        
+        if (strlen($newPassword) < $min || strlen($newPassword) > $max) {
+            return ['success' => false, 'message' => 'js.auth.err_pass_length'];
+        }
+
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        
+        $updStmt = $this->conn->prepare("UPDATE users SET contrasena = :new_hash WHERE id = :id");
+        if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
+            $this->logChange($userId, 'contrasena', $hash, $newHash);
+            $this->resetAttempts('update_password');
+            return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
+        }
+
+        return ['success' => false, 'message' => 'Error al actualizar la contraseña en la base de datos.'];
+    }
     public function updatePreference($userId, $field, $value) {
         // --- VALIDAR SPAM DE PREFERENCIAS ---
         if (!$this->checkRateLimit('update_preference')) {

@@ -70,12 +70,10 @@ return function($dbConnection, $action) {
             Utils::sendResponse($settings->confirmEmailChange($userId, $data->code));
             break;
 
-        // NUEVO: Obtener preferencias del usuario
         case 'get_preferences':
             Utils::sendResponse(['success' => true, 'preferences' => $settings->getPreferences($userId)]);
             break;
 
-        // NUEVO: Actualizar preferencia del usuario
         case 'update_preference':
             $data = Utils::getJsonInput();
             if (!Utils::validateCSRF($data->csrf_token ?? '')) {
@@ -85,6 +83,28 @@ return function($dbConnection, $action) {
                 Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
             }
             Utils::sendResponse($settings->updatePreference($userId, $data->field, $data->value));
+            break;
+
+        case 'verify_password':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->password)) {
+                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            Utils::sendResponse($settings->verifyPassword($userId, $data->password));
+            break;
+
+        case 'update_password':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->current_password) || empty($data->new_password)) {
+                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            Utils::sendResponse($settings->updatePassword($userId, $data->current_password, $data->new_password));
             break;
 
         default:

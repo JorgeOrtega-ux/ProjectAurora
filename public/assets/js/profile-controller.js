@@ -10,6 +10,7 @@ export class ProfileController {
 
     init() {
         document.body.addEventListener('click', (e) => {
+            // --- MANEJO DE FOTO DE PERFIL ---
             if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
                 e.preventDefault();
                 const fileInput = document.getElementById('upload-avatar');
@@ -44,6 +45,7 @@ export class ProfileController {
                 return;
             }
 
+            // --- MANEJO DE CORREO Y CAMPOS EDITABLES ---
             if (e.target.closest('#btn-confirm-email-code')) {
                 e.preventDefault();
                 this.confirmEmailChange(e.target.closest('#btn-confirm-email-code'));
@@ -67,6 +69,29 @@ export class ProfileController {
                 return; 
             }
 
+            // --- MANEJO DE SEGURIDAD (CONTRASEÑA MULTI-PASO) ---
+            if (e.target.closest('[data-action="pass-start-flow"]')) { 
+                e.preventDefault(); 
+                this.handlePassStartFlow(); 
+                return; 
+            }
+            if (e.target.closest('[data-action="pass-cancel-flow"]')) { 
+                e.preventDefault(); 
+                this.handlePassCancelFlow(); 
+                return; 
+            }
+            if (e.target.closest('[data-action="pass-go-step-2"]')) { 
+                e.preventDefault(); 
+                this.handlePassVerify(e.target.closest('button')); 
+                return; 
+            }
+            if (e.target.closest('[data-action="pass-submit-final"]')) { 
+                e.preventDefault(); 
+                this.handlePassUpdate(e.target.closest('button')); 
+                return; 
+            }
+
+            // --- MANEJO DE DROPDOWNS ---
             const triggerSelector = e.target.closest('[data-action="toggle-dropdown"]');
             if (triggerSelector) { e.preventDefault(); this.handleDropdownToggle(triggerSelector, e); return; }
 
@@ -105,6 +130,95 @@ export class ProfileController {
             if (filterInput) this.handleFilter(filterInput);
         });
     }
+
+    // ==========================================
+    // FLUJO DE CAMBIO DE CONTRASEÑA
+    // ==========================================
+
+    handlePassStartFlow() {
+        document.querySelector('[data-state="password-stage-0"]').classList.replace('active', 'disabled');
+        document.querySelector('[data-state="password-stage-1"]').classList.replace('disabled', 'active');
+        setTimeout(() => document.getElementById('current-password-input').focus(), 50);
+    }
+
+    handlePassCancelFlow() {
+        const stage1 = document.querySelector('[data-state="password-stage-1"]');
+        const stage2 = document.querySelector('[data-state="password-stage-2"]');
+        
+        if(stage1) stage1.classList.replace('active', 'disabled');
+        if(stage2) stage2.classList.replace('active', 'disabled');
+        
+        document.querySelector('[data-state="password-stage-0"]').classList.replace('disabled', 'active');
+        
+        document.getElementById('current-password-input').value = '';
+        document.getElementById('new-password-input').value = '';
+        document.getElementById('repeat-password-input').value = '';
+    }
+
+    async handlePassVerify(btn) {
+        const pass = document.getElementById('current-password-input').value;
+        if (!pass) { Toast.show(window.t('js.profile.err_empty'), 'error'); return; }
+        
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.VERIFY_PASSWORD, { password: pass, csrf_token: csrfToken });
+            if (res.success) {
+                document.querySelector('[data-state="password-stage-1"]').classList.replace('active', 'disabled');
+                document.querySelector('[data-state="password-stage-2"]').classList.replace('disabled', 'active');
+                setTimeout(() => document.getElementById('new-password-input').focus(), 50);
+            } else {
+                Toast.show(window.t(res.message), 'error');
+            }
+        } catch (error) { 
+            Toast.show(window.t('js.profile.err_net'), 'error'); 
+        } finally { 
+            btn.disabled = false; 
+            btn.textContent = originalText; 
+        }
+    }
+
+    async handlePassUpdate(btn) {
+        const currentPass = document.getElementById('current-password-input').value;
+        const newPass = document.getElementById('new-password-input').value;
+        const repPass = document.getElementById('repeat-password-input').value;
+        
+        if (!newPass || !repPass) { Toast.show(window.t('js.profile.err_empty'), 'error'); return; }
+        if (newPass !== repPass) { Toast.show(window.t('js.auth.err_pass_match'), 'error'); return; }
+        
+        const minPass = parseInt(window.APP_CONFIG?.min_password_length || 12);
+        const maxPass = parseInt(window.APP_CONFIG?.max_password_length || 64);
+        if (newPass.length < minPass || newPass.length > maxPass) {
+            Toast.show(window.t('js.auth.err_pass_length'), 'error'); return;
+        }
+
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PASSWORD, { current_password: currentPass, new_password: newPass, csrf_token: csrfToken });
+            if (res.success) {
+                Toast.show(window.t(res.message), 'success');
+                this.handlePassCancelFlow();
+            } else {
+                Toast.show(window.t(res.message), 'error');
+            }
+        } catch (error) { 
+            Toast.show(window.t('js.profile.err_net'), 'error'); 
+        } finally { 
+            btn.disabled = false; 
+            btn.textContent = originalText; 
+        }
+    }
+
+    // ==========================================
+    // MÉTODOS DE FOTO DE PERFIL
+    // ==========================================
 
     handleFileSelection(input) {
         const file = input.files[0];
@@ -230,6 +344,10 @@ export class ProfileController {
             target.classList.replace('disabled', 'active');
         }
     }
+
+    // ==========================================
+    // MÉTODOS DE CAMPOS EDITABLES
+    // ==========================================
 
     toggleFieldState(target, mode) {
         const viewState = document.querySelector(`[data-state="${target}-view-state"]`);
@@ -386,6 +504,10 @@ export class ProfileController {
         }
     }
 
+    // ==========================================
+    // MÉTODOS DE DROPDOWNS
+    // ==========================================
+
     handleDropdownToggle(selector, event) {
         event.stopPropagation();
         const wrapper = selector.closest('.component-dropdown');
@@ -400,7 +522,6 @@ export class ProfileController {
         const textDisplay = wrapper.querySelector('.component-dropdown-text');
         textDisplay.textContent = option.dataset.label;
         
-        // NUEVO: Sincronizar instantáneamente el icono (ej. en el dropdown de temas)
         const iconDisplay = wrapper.querySelector('.trigger-select-icon');
         const optionIcon = option.querySelector('.component-menu-link-icon span');
         if (iconDisplay && optionIcon) {
