@@ -120,7 +120,7 @@ export class TooltipController {
 
         // Inicializar Popper.js
         this.popperInstance = window.Popper.createPopper(element, tooltipEl, {
-            placement: 'bottom',
+            placement: 'auto',
             strategy: 'absolute', 
             modifiers: [
                 {

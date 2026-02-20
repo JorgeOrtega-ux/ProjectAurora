@@ -816,6 +816,13 @@ input:checked + .component-toggle-slider:before {
     .component-button:not(.component-button--large) {
         flex: 1;
     }
+    
+    /* NUEVO FIX PARA LOS BOTONES DEL AVATAR:
+       Hacemos que el wrapper interno ocupe todo el ancho para que el "flex: 1" 
+       de los botones actúe extendiéndolos al 100% */
+    .component-action-group {
+        width: 100%;
+    }
 }
 
 /* =========================================
