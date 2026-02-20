@@ -222,8 +222,6 @@ class SettingsService {
     }
 
     public function updateField($userId, $field, $newValue) {
-        // En este controlador la actualización de email se dividió en verify/request, 
-        // pero se mantiene aquí para retrocompatibilidad general de campos.
         $allowedFields = ['nombre', 'correo'];
         if (!in_array($field, $allowedFields)) { return ['success' => false, 'message' => 'Campo no válido.']; }
 
@@ -381,14 +379,16 @@ class SettingsService {
     // ==========================================
 
     public function getPreferences($userId) {
-        $stmt = $this->conn->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = :id");
+        $stmt = $this->conn->prepare("SELECT language, open_links_new_tab, theme, extended_alerts FROM user_preferences WHERE user_id = :id");
         $stmt->execute([':id' => $userId]);
         $prefs = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$prefs) {
             return [
                 'language' => 'en-us',
-                'open_links_new_tab' => 1
+                'open_links_new_tab' => 1,
+                'theme' => 'system',
+                'extended_alerts' => 0
             ];
         }
         return $prefs;
@@ -403,7 +403,7 @@ class SettingsService {
         $this->recordActionAttempt('update_preference', 15, 5);
         // ------------------------------------
 
-        $allowedFields = ['language', 'open_links_new_tab'];
+        $allowedFields = ['language', 'open_links_new_tab', 'theme', 'extended_alerts'];
         if (!in_array($field, $allowedFields)) {
             return ['success' => false, 'message' => 'Campo de preferencia no válido.'];
         }
@@ -417,6 +417,17 @@ class SettingsService {
         }
 
         if ($field === 'open_links_new_tab') {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
+
+        if ($field === 'theme') {
+            $allowedThemes = ['system', 'light', 'dark'];
+            if (!in_array($value, $allowedThemes)) {
+                $value = 'system';
+            }
+        }
+
+        if ($field === 'extended_alerts') {
             $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 

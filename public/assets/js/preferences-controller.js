@@ -4,9 +4,19 @@ import { API_ROUTES } from './api-routes.js';
 
 export class PreferencesController {
     constructor() {
-        this.prefs = { language: 'en-us', openLinksNewTab: true };
+        this.prefs = { 
+            language: 'en-us', 
+            openLinksNewTab: true,
+            theme: 'system',
+            extendedAlerts: false
+        };
         this.isLoggedIn = document.body.classList.contains('is-logged-in');
         this.supportedLangs = ['en-us', 'en-gb', 'fr-fr', 'de-de', 'it-it', 'es-latam', 'es-mx', 'es-es', 'pt-br', 'pt-pt'];
+        
+        // Listener dinámico para cambios del tema en el SO
+        this.systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        this.systemThemeQuery.addEventListener('change', () => this.applyThemeMode());
+        
         this.init();
     }
 
@@ -33,6 +43,8 @@ export class PreferencesController {
                 if (res.success && res.preferences) {
                     this.prefs.language = res.preferences.language;
                     this.prefs.openLinksNewTab = res.preferences.open_links_new_tab == 1;
+                    this.prefs.theme = res.preferences.theme || 'system';
+                    this.prefs.extendedAlerts = res.preferences.extended_alerts == 1;
                     this.saveLocally(); 
                     return;
                 }
@@ -41,14 +53,18 @@ export class PreferencesController {
         
         const local = localStorage.getItem('aurora_prefs');
         if (local) {
-            this.prefs = JSON.parse(local);
+            this.prefs = { ...this.prefs, ...JSON.parse(local) }; // Combina evitando perder las nuevas props
         } else {
             this.prefs.language = this.getBrowserLanguage();
             this.prefs.openLinksNewTab = true;
+            this.prefs.theme = 'system';
+            this.prefs.extendedAlerts = false;
             this.saveLocally();
             if (this.isLoggedIn) {
                 this.updateBackend('language', this.prefs.language);
                 this.updateBackend('open_links_new_tab', this.prefs.openLinksNewTab);
+                this.updateBackend('theme', this.prefs.theme);
+                this.updateBackend('extended_alerts', this.prefs.extendedAlerts);
             }
         }
     }
@@ -59,13 +75,16 @@ export class PreferencesController {
     }
 
     async updatePreference(key, value) {
-        const jsKey = key === 'open_links_new_tab' ? 'openLinksNewTab' : key;
-        const originalValue = this.prefs[jsKey]; // Guardamos el original por si falla
+        let jsKey = key;
+        if (key === 'open_links_new_tab') jsKey = 'openLinksNewTab';
+        if (key === 'extended_alerts') jsKey = 'extendedAlerts';
+        
+        const originalValue = this.prefs[jsKey]; 
         const changed = this.prefs[jsKey] !== value;
         
         if (!changed) return;
 
-        // Actualizamos de forma optimista
+        // Actualización optimista
         this.prefs[jsKey] = value;
         this.saveLocally(); 
 
@@ -74,17 +93,17 @@ export class PreferencesController {
             successBackend = await this.updateBackend(key, value);
         }
         
-        // Si el backend lo rechaza (ej. Por Rate Limit), revertimos los cambios en JS y en UI
+        // Si el backend lo rechaza (ej. Rate Limit), revertimos JS y UI
         if (!successBackend) {
             this.prefs[jsKey] = originalValue;
             this.saveLocally();
-            this.syncUI(); // Forzamos a que los botones vuelvan a como estaban
+            this.syncUI(); 
             return;
         }
         
         this.applyPreferencesToDOM();
 
-        // RECARGA COMPLETA SI CAMBIÓ EL IDIOMA PARA REFLEJAR TODO
+        // Recarga completa solo si el idioma cambia para reflejar la traducción
         if (key === 'language' && changed) {
             window.location.reload();
         }
@@ -109,22 +128,31 @@ export class PreferencesController {
     }
 
     syncUI() {
+        // --- Sincronizar interruptores ---
         document.querySelectorAll('#pref-open-links, #pref-open-links-guest').forEach(t => t.checked = this.prefs.openLinksNewTab);
-        document.querySelectorAll('[data-action="select-option"]').forEach(opt => {
-            opt.classList.remove('active');
-            if (opt.dataset.value === this.prefs.language) {
-                opt.classList.add('active');
-                const dropdown = opt.closest('.component-dropdown');
-                if (dropdown) {
+        
+        const alertToggle = document.getElementById('pref-extended-alerts');
+        if (alertToggle) alertToggle.checked = this.prefs.extendedAlerts;
+
+        // --- Sincronizar todos los Dropdowns dinámicamente ---
+        document.querySelectorAll('.component-dropdown').forEach(dropdown => {
+            const prefKey = dropdown.dataset.prefKey || 'language';
+            let currentValue = this.prefs[prefKey === 'theme' ? 'theme' : 'language'];
+
+            dropdown.querySelectorAll('[data-action="select-option"]').forEach(opt => {
+                opt.classList.remove('active');
+                if (opt.dataset.value === currentValue) {
+                    opt.classList.add('active');
                     const textDisplay = dropdown.querySelector('.component-dropdown-text');
                     if (textDisplay) textDisplay.textContent = opt.dataset.label;
                 }
-            }
+            });
         });
     }
 
     applyPreferencesToDOM() {
         document.documentElement.lang = this.prefs.language;
+        
         const links = document.querySelectorAll('a');
         if (this.prefs.openLinksNewTab) {
             links.forEach(a => {
@@ -138,6 +166,27 @@ export class PreferencesController {
                     a.removeAttribute('target'); a.removeAttribute('rel');
                 }
             });
+        }
+
+        // Aplicar el tema (inyectar clase en el HTML)
+        this.applyThemeMode();
+    }
+
+    applyThemeMode() {
+        const html = document.documentElement;
+        html.classList.remove('dark-theme', 'light-theme');
+
+        if (this.prefs.theme === 'dark') {
+            html.classList.add('dark-theme');
+        } else if (this.prefs.theme === 'light') {
+            html.classList.add('light-theme');
+        } else {
+            // "system" o fallback
+            if (this.systemThemeQuery.matches) {
+                html.classList.add('dark-theme');
+            } else {
+                html.classList.add('light-theme');
+            }
         }
     }
 }

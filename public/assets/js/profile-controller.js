@@ -76,7 +76,9 @@ export class ProfileController {
                 this.handleOptionSelect(optionSelect); 
                 
                 if (window.preferencesController) {
-                    window.preferencesController.updatePreference('language', optionSelect.dataset.value);
+                    const dropdown = optionSelect.closest('.component-dropdown');
+                    const prefKey = dropdown ? (dropdown.dataset.prefKey || 'language') : 'language';
+                    window.preferencesController.updatePreference(prefKey, optionSelect.dataset.value);
                 }
                 return; 
             }
@@ -90,6 +92,10 @@ export class ProfileController {
             if (e.target.id === 'pref-open-links' || e.target.id === 'pref-open-links-guest') {
                 if (window.preferencesController) {
                     window.preferencesController.updatePreference('open_links_new_tab', e.target.checked);
+                }
+            } else if (e.target.id === 'pref-extended-alerts') {
+                if (window.preferencesController) {
+                    window.preferencesController.updatePreference('extended_alerts', e.target.checked);
                 }
             }
         });
@@ -242,7 +248,6 @@ export class ProfileController {
             const input = document.getElementById(`input-${target}`);
             if (input) {
                 input.focus();
-                // MAGIA UNIVERSAL: Este truco funciona en type="email", "number", "text", etc.
                 const val = input.value;
                 input.value = '';
                 input.value = val;

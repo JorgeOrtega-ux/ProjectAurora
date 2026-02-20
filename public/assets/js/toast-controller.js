@@ -36,7 +36,13 @@ export class Toast {
         // 5. Mostrar (deslizar hacia adentro)
         toast.classList.add('show');
 
-        // 6. Ocultar y remover después de 3.5 segundos
+        // Leer la duración desde las preferencias de accesibilidad
+        let duration = 3500; // Por defecto
+        if (window.preferencesController && window.preferencesController.prefs.extendedAlerts) {
+            duration = 5000;
+        }
+
+        // 6. Ocultar y remover
         setTimeout(() => {
             toast.classList.remove('show');
             // Esperar a que termine la transición de CSS para removerlo del DOM
@@ -45,6 +51,6 @@ export class Toast {
                     toast.remove();
                 }
             });
-        }, 3500);
+        }, duration);
     }
 }

@@ -1,9 +1,67 @@
 <div class="view-content">
-    <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;"><?= t('settings.access.title') ?></h1>
-    <p style="color: #666; font-size: 14px;"><?= t('settings.access.desc') ?></p>
-    
-    <div style="margin-top: 32px; padding: 32px; border: 2px dashed #e0e0e0; border-radius: 12px; text-align: center; color: #888;">
-        <span class="material-symbols-rounded" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;">visibility</span>
-        <p style="font-weight: 500;"><?= t('settings.empty') ?></p>
+    <div class="component-wrapper">
+        <div class="component-header-card">
+            <h1 class="component-page-title"><?= t('settings.access.title') ?></h1>
+            <p class="component-page-description"><?= t('settings.access.desc') ?></p>
+        </div>
+
+        <div class="component-card--grouped">
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title"><?= t('settings.access.theme') ?></h2>
+                        <p class="component-card__description"><?= t('settings.access.theme_desc') ?></p>
+                    </div>
+                </div>
+                <div class="component-card__actions w-100">
+                    <div class="component-dropdown" data-pref-key="theme">
+                        <div class="component-dropdown-trigger" data-action="toggle-dropdown">
+                            <span class="material-symbols-rounded trigger-select-icon">dark_mode</span>
+                            <span class="component-dropdown-text"><?= t('settings.access.theme_system') ?></span>
+                            <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+                        
+                        <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
+                            <div class="component-module-panel">
+                                <div class="pill-container"><div class="drag-handle"></div></div>
+                                <div class="component-module-panel-body component-module-panel-body--padded">
+                                    <div class="component-menu-list overflow-y component-menu-list--dropdown">
+                                        <div class="component-menu-link active" data-action="select-option" data-value="system" data-label="<?= t('settings.access.theme_system') ?>">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">settings_brightness</span></div>
+                                            <div class="component-menu-link-text"><span><?= t('settings.access.theme_system') ?></span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="light" data-label="<?= t('settings.access.theme_light') ?>">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">light_mode</span></div>
+                                            <div class="component-menu-link-text"><span><?= t('settings.access.theme_light') ?></span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="dark" data-label="<?= t('settings.access.theme_dark') ?>">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">dark_mode</span></div>
+                                            <div class="component-menu-link-text"><span><?= t('settings.access.theme_dark') ?></span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="component-card--grouped">
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title"><?= t('settings.access.alerts') ?></h2>
+                        <p class="component-card__description"><?= t('settings.access.alerts_desc') ?></p>
+                    </div>
+                </div>
+                <div class="component-card__actions actions-right">
+                    <label class="component-toggle-switch">
+                        <input type="checkbox" id="pref-extended-alerts">
+                        <span class="component-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

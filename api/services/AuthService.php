@@ -200,12 +200,17 @@ class AuthService {
 
             $lang = $data->language ?? 'en-us';
             $openLinks = isset($data->open_links_new_tab) && $data->open_links_new_tab ? 1 : 0;
+            // Configuración de accesibilidad por defecto
+            $theme = $data->theme ?? 'system';
+            $extendedAlerts = isset($data->extended_alerts) && $data->extended_alerts ? 1 : 0;
 
-            $prefStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (:uid, :lang, :links)");
+            $prefStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab, theme, extended_alerts) VALUES (:uid, :lang, :links, :theme, :alerts)");
             $prefStmt->execute([
                 ':uid'   => $newUserId,
                 ':lang'  => $lang,
-                ':links' => $openLinks
+                ':links' => $openLinks,
+                ':theme' => $theme,
+                ':alerts'=> $extendedAlerts
             ]);
             
             setcookie('aurora_lang', $lang, time() + 31536000, '/');

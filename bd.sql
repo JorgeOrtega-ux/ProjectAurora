@@ -59,11 +59,13 @@ CREATE TABLE IF NOT EXISTS user_changes_log (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Crear la tabla 'user_preferences' (SISTEMA DE PREFERENCIAS)
+-- 8. Crear la tabla 'user_preferences' (SISTEMA DE PREFERENCIAS ACTUALIZADO)
 CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INT PRIMARY KEY,
     language VARCHAR(10) DEFAULT 'en-us',
     open_links_new_tab BOOLEAN DEFAULT TRUE,
+    theme VARCHAR(20) DEFAULT 'system',
+    extended_alerts BOOLEAN DEFAULT FALSE,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
