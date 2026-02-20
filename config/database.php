@@ -13,17 +13,15 @@ class Database {
     public $conn;
 
     public function __construct() {
-        // Toma los valores estrictamente del entorno (.env)
-        $this->host = getenv('DB_HOST');
-        $this->db_name = getenv('DB_NAME');
-        $this->username = getenv('DB_USER');
-        $this->password = getenv('DB_PASS');
+        // Usamos $_ENV que es mucho más seguro en peticiones concurrentes que getenv()
+        $this->host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+        $this->db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+        $this->username = $_ENV['DB_USER'] ?? getenv('DB_USER');
+        $this->password = $_ENV['DB_PASS'] ?? getenv('DB_PASS');
     }
 
     public function getConnection() {
         $this->conn = null;
-        // Al quitar el try-catch, PDO lanzará PDOException automáticamente si falla
-        // y será capturado de forma segura por bootstrap.php
         $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
         $this->conn->exec("set names utf8");
         $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

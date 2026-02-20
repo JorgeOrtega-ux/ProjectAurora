@@ -9,7 +9,9 @@ export class ApiService {
             });
             
             if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                console.error(`[Backend Error POST] ${url}:`, errorData);
+                throw new Error(`Error HTTP: ${response.status} - ${errorData.message || 'Error del servidor'}`);
             }
             return await response.json();
         } catch (error) {
@@ -26,7 +28,9 @@ export class ApiService {
             });
             
             if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                console.error(`[Backend Error GET] ${url}:`, errorData);
+                throw new Error(`Error HTTP: ${response.status} - ${errorData.message || 'Error del servidor'}`);
             }
             return await response.json();
         } catch (error) {
@@ -35,17 +39,17 @@ export class ApiService {
         }
     }
 
-    // NUEVO MÉTODO PARA SUBIR ARCHIVOS
     static async postFormData(url, formData) {
         try {
-            // No pasamos 'Content-Type', el navegador lo establece a 'multipart/form-data' automáticamente
             const response = await fetch(url, {
                 method: 'POST',
                 body: formData 
             });
             
             if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                console.error(`[Backend Error FormData] ${url}:`, errorData);
+                throw new Error(`Error HTTP: ${response.status} - ${errorData.message || 'Error del servidor'}`);
             }
             return await response.json();
         } catch (error) {

@@ -66,10 +66,10 @@ try {
                 $APP_CONFIG[$row['setting_key']] = $row['setting_value'];
             }
         }
-    } catch (PDOException $e) {
+    } catch (\Throwable $e) {
         // Ignorar el error si la tabla aún no existe al momento de iniciar por primera vez
     }
-} catch (PDOException $e) {
+} catch (\Throwable $e) { // <-- CAMBIADO DE PDOException A \Throwable
     $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
                     (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                     (isset($_SERVER['HTTP_X_SPA_REQUEST']));
@@ -77,11 +77,12 @@ try {
     if ($isApiRequest) {
         http_response_code(500);
         header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(['success' => false, 'message' => 'Error crítico: No se pudo establecer conexión con la base de datos.']);
+        // <-- AHORA MOSTRARÁ EL ERROR REAL
+        echo json_encode(['success' => false, 'message' => 'Error crítico: ' . $e->getMessage()]);
         exit;
     } else {
         http_response_code(500);
-        die("<div style='font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f5f5fa; margin: 0;'><div style='text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px;'><h1 style='color: #dc2626; font-size: 24px; margin-bottom: 12px;'>Error 500</h1><p style='color: #666; font-size: 15px; line-height: 1.5;'>Servicio no disponible temporalmente.</p></div></div>");
+        die("<div style='font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f5f5fa; margin: 0;'><div style='text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px;'><h1 style='color: #dc2626; font-size: 24px; margin-bottom: 12px;'>Error 500</h1><p style='color: #666; font-size: 15px; line-height: 1.5;'>Servicio no disponible temporalmente. Detalles: " . htmlspecialchars($e->getMessage()) . "</p></div></div>");
     }
 }
 

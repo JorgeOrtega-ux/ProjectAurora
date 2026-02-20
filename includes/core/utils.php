@@ -69,12 +69,17 @@ class Utils {
     /**
      * Carga las variables de entorno desde el archivo .env
      */
+   /**
+     * Carga las variables de entorno desde el archivo .env
+     */
     public static function loadEnv($path) {
         if (!file_exists($path)) {
             throw new Exception("El archivo .env no existe en la ruta especificada.");
         }
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) return; // Previene errores si el archivo se bloquea por concurrencia
+
         foreach ($lines as $line) {
             // Ignorar los comentarios
             if (strpos(trim($line), '#') === 0) continue;
@@ -82,16 +87,13 @@ class Utils {
             if (strpos($line, '=') !== false) {
                 list($name, $value) = explode('=', $line, 2);
                 $name = trim($name);
-                $value = trim($value);
-                
-                // Remover comillas del valor si las tiene
-                $value = trim($value, '"\'');
+                // Remover espacios y comillas del valor
+                $value = trim(trim($value), '"\'');
 
-                if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
-                    putenv(sprintf('%s=%s', $name, $value));
-                    $_ENV[$name] = $value;
-                    $_SERVER[$name] = $value;
-                }
+                // Forzamos la escritura en memoria para la petición actual
+                putenv(sprintf('%s=%s', $name, $value));
+                $_ENV[$name] = $value;
+                $_SERVER[$name] = $value;
             }
         }
     }
