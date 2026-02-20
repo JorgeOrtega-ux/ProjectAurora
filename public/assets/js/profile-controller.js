@@ -1,4 +1,3 @@
-// public/assets/js/profile-controller.js
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
 
@@ -9,9 +8,6 @@ export class ProfileController {
 
     init() {
         document.body.addEventListener('click', (e) => {
-            // ===============================================
-            // GESTIÓN DEL AVATAR
-            // ===============================================
             if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
                 e.preventDefault();
                 const fileInput = document.getElementById('upload-avatar');
@@ -35,15 +31,12 @@ export class ProfileController {
             const btnDeleteAvatar = e.target.closest('[data-action="profile-picture-delete"]');
             if (btnDeleteAvatar) {
                 e.preventDefault();
-                if(confirm("¿Estás seguro de que deseas eliminar tu foto de perfil?")) {
+                if(confirm(window.t('js.profile.confirm_del'))) {
                     this.deleteAvatar(btnDeleteAvatar);
                 }
                 return;
             }
 
-            // ===============================================
-            // OTROS CAMPOS DE TEXTO
-            // ===============================================
             const btnStartEdit = e.target.closest('[data-action="start-edit"]');
             if (btnStartEdit) { e.preventDefault(); this.handleStartEdit(btnStartEdit.dataset.target); return; }
 
@@ -61,7 +54,6 @@ export class ProfileController {
                 e.preventDefault(); 
                 this.handleOptionSelect(optionSelect); 
                 
-                // NOTIFICAR AL CONTROLADOR DE PREFERENCIAS (NUEVO)
                 if (window.preferencesController) {
                     window.preferencesController.updatePreference('language', optionSelect.dataset.value);
                 }
@@ -74,7 +66,6 @@ export class ProfileController {
                 this.handleFileSelection(e.target);
             }
 
-            // NOTIFICAR AL CONTROLADOR DE PREFERENCIAS PARA SWITCH (NUEVO)
             if (e.target.id === 'pref-open-links' || e.target.id === 'pref-open-links-guest') {
                 if (window.preferencesController) {
                     window.preferencesController.updatePreference('open_links_new_tab', e.target.checked);
@@ -93,7 +84,7 @@ export class ProfileController {
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
-            alert('La imagen no puede pesar más de 2MB.');
+            alert(window.t('js.profile.err_img_size'));
             input.value = ''; 
             return;
         }
@@ -145,11 +136,11 @@ export class ProfileController {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('custom'); 
             } else {
-                alert(res.message);
+                alert(window.t(res.message));
                 this.cancelAvatarChange(); 
             }
         } catch (error) {
-            alert('Error de red al subir la imagen.');
+            alert(window.t('js.profile.err_net'));
             this.cancelAvatarChange();
         } finally {
             btn.disabled = false;
@@ -171,10 +162,10 @@ export class ProfileController {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('default');
             } else {
-                alert(res.message);
+                alert(window.t(res.message));
             }
         } catch (error) {
-            alert('Error al procesar la solicitud.');
+            alert(window.t('js.profile.err_proc'));
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -251,7 +242,7 @@ export class ProfileController {
 
         const newValue = inputEl.value.trim();
         if (newValue === "") {
-            alert("El campo no puede estar vacío"); 
+            alert(window.t('js.profile.err_empty')); 
             return;
         }
 
@@ -273,9 +264,9 @@ export class ProfileController {
             if (res.success) {
                 displayEl.textContent = res.newValue;
                 this.toggleFieldState(target, 'view');
-            } else { alert(res.message); }
+            } else { alert(window.t(res.message)); }
         } catch (error) {
-            alert('Error al actualizar el campo en la base de datos.');
+            alert(window.t('js.profile.err_db'));
         } finally {
             btnSave.disabled = false;
             btnSave.textContent = originalText;

@@ -152,7 +152,7 @@
 
 /* MENU LINK */
 .component-menu-list { width: 100%; display: flex; flex-direction: column; gap: 4px; }
-.component-menu-link { width: 100%; height: 40px; display: flex; flex-direction: row; border-radius: 8px; background-color: transparent; text-decoration: none; color: inherit; cursor: pointer; transition: background-color 0.2s ease; }
+.component-menu-link { width: 100%; height: 40px; flex-shrink: 0; display: flex; flex-direction: row; border-radius: 8px; background-color: transparent; text-decoration: none; color: inherit; cursor: pointer; transition: background-color 0.2s ease; }
 .component-menu-link:hover, .component-menu-link.active { background-color: #f5f5fa; }
 .component-menu-link.active .component-menu-link-icon { color: #000000; }
 .component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: #000000; }
@@ -748,7 +748,7 @@ input:checked + .component-toggle-slider:before {
 
 /* Cabecera de búsqueda con border-bottom independiente del padding del listado */
 .component-module-panel-header--search {
-    padding: 8px 12px;
+    padding: 8px;
     border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0;
     background-color: #ffffff;

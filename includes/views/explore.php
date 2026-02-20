@@ -1,4 +1,4 @@
 <div class="view-content">
-    <h1>Explorar Tendencias</h1>
-    <p>Descubre lo último en análisis de datos.</p>
-    </div>
+    <h1><?= t('explore.title') ?></h1>
+    <p><?= t('explore.desc') ?></p>
+</div>

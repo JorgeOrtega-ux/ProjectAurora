@@ -50,24 +50,21 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // --- SISTEMA DE INTERNACIONALIZACIÓN (i18n) ---
-$auroraLang = $_COOKIE['aurora_lang'] ?? 'es-latam';
-$fileName = ($auroraLang === 'es-latam') ? 'es-419' : $auroraLang; // Mapeo a tu archivo
+$auroraLang = $_COOKIE['aurora_lang'] ?? 'en-us'; // Define el idioma por defecto si no hay cookie
+$fileName = ($auroraLang === 'es-latam') ? 'es-419' : $auroraLang; 
 $translations = [];
 $langFile = __DIR__ . '/../../translations/' . $fileName . '.json';
 
+// Si el archivo existe, lo cargamos. Si no, $translations se queda vacío.
 if (file_exists($langFile)) {
     $translations = json_decode(file_get_contents($langFile), true);
-} else {
-    $fallback = __DIR__ . '/../../translations/es-419.json';
-    if (file_exists($fallback)) {
-        $translations = json_decode(file_get_contents($fallback), true);
-    }
 }
 
 // Helper global para vistas y controladores
 if (!function_exists('t')) {
     function t($key) {
         global $translations;
+        // Si el array está vacío o no encuentra la clave, imprime la clave directamente
         return $translations[$key] ?? $key;
     }
 }

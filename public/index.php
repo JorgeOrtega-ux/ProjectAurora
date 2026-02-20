@@ -23,7 +23,7 @@ if ($isSpaRequest) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($_COOKIE['aurora_lang'] ?? 'es') ?>">
+<html lang="<?= htmlspecialchars($_COOKIE['aurora_lang'] ?? 'en') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -59,7 +59,8 @@ if ($isSpaRequest) {
     </div>
     
     <script>
-        window.i18n = <?= json_encode($translations) ?>;
+        // Forzamos a que sea un objeto (stdClass) para que JS siempre lea {} si está vacío
+        window.i18n = <?= json_encode(empty($translations) ? new stdClass() : $translations) ?>;
         window.t = function(key) { return window.i18n[key] || key; };
     </script>
     <script type="module" src="assets/js/app-init.js"></script>

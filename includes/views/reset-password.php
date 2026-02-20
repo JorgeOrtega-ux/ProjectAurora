@@ -1,5 +1,4 @@
 <?php
-// Evaluamos si el token existe en la URL para evitar el parpadeo de la UI
 $hasToken = isset($_GET['token']) && !empty($_GET['token']);
 $initialStyle = !$hasToken ? 'display: none;' : '';
 ?>
@@ -8,8 +7,8 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
         <div class="component-card component-card--compact">
 
             <div class="component-header-centered" style="<?php echo $initialStyle; ?>">
-                <h1 id="auth-title">Nueva Contraseña</h1>
-                <p id="auth-subtitle">Ingresa tu nueva contraseña para la cuenta</p>
+                <h1 id="auth-title"><?= t('reset.title') ?></h1>
+                <p id="auth-subtitle"><?= t('reset.subtitle') ?></p>
             </div>
 
             <div id="reset-fatal-error" class="component-fatal-error-container">
@@ -23,7 +22,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 <div class="component-form-group">
                     <div class="component-input-wrapper">
                         <input type="password" id="reset-password-1" class="component-text-input has-action" required placeholder=" ">
-                        <label for="reset-password-1" class="component-label-floating">Nueva contraseña</label>
+                        <label for="reset-password-1" class="component-label-floating"><?= t('reset.new_pass') ?></label>
                         <button type="button" class="component-input-action" tabindex="-1">
                             <span class="material-symbols-rounded">visibility</span>
                         </button>
@@ -31,7 +30,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
 
                     <div class="component-input-wrapper">
                         <input type="password" id="reset-password-2" class="component-text-input has-action" required placeholder=" ">
-                        <label for="reset-password-2" class="component-label-floating">Confirmar contraseña</label>
+                        <label for="reset-password-2" class="component-label-floating"><?= t('reset.confirm_pass') ?></label>
                         <button type="button" class="component-input-action" tabindex="-1">
                             <span class="material-symbols-rounded">visibility</span>
                         </button>
@@ -39,12 +38,12 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 </div>
 
                 <button type="button" id="btn-reset-password" class="component-button component-button--large primary" style="margin-top: 16px;">
-                    Actualizar Contraseña
+                    <?= t('reset.btn') ?>
                 </button>
 
                 <div id="reset-error" class="component-message-error"></div>
                 <div id="reset-success" style="display: none; color: #16a34a; font-weight: 500; text-align: center; margin-top: 16px; padding: 12px; background: #f0fdf4; border: 1px solid #16a34a; border-radius: 8px;">
-                    Contraseña actualizada correctamente. Redirigiendo...
+                    <?= t('reset.success') ?>
                 </div>
             </div>
 

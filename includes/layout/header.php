@@ -37,7 +37,7 @@ $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !import
             </div>
             <div class="auth-user-actions" style="<?= $styleUser; ?>">
                 <button class="component-button component-button--square-40 user-avatar-btn" data-action="toggleModuleMainOptions" data-role="<?= htmlspecialchars($role); ?>" style="padding: 0; border: none; background: transparent;">
-                    <img id="user-avatar-img" src="<?= htmlspecialchars($avatar); ?>" alt="Perfil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <img id="user-avatar-img" src="<?= htmlspecialchars($avatar); ?>" alt="<?= t('header.profile_alt') ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 </button>
             </div>
         </div>

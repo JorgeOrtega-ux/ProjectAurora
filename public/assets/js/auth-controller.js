@@ -1,4 +1,3 @@
-// public/assets/js/auth-controller.js
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
 
@@ -7,13 +6,11 @@ export class AuthController {
         this.router = router;
         this.init();
         
-        // Ejecutar la revisión de etapa inicial en caso de cargar directo del navegador
         this.checkRegisterStage(window.location.pathname);
         this.checkResetPasswordStage(window.location.pathname);
     }
 
     init() {
-        // Manejo de pulsación de tecla Enter para emular el 'submit' nativo
         document.body.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 if (e.target.closest('#form-login')) { e.preventDefault(); this.handleLogin(); }
@@ -25,7 +22,6 @@ export class AuthController {
             }
         });
 
-        // Envíos a través de clics en nuestros botones personalizados
         document.body.addEventListener('click', (e) => {
             if (e.target.closest('#btn-login')) { e.preventDefault(); this.handleLogin(); return; }
             if (e.target.closest('#btn-next-1')) { e.preventDefault(); this.handleRegisterStage1(); return; }
@@ -34,11 +30,9 @@ export class AuthController {
             if (e.target.closest('#btn-forgot-password')) { e.preventDefault(); this.handleForgotPassword(); return; }
             if (e.target.closest('#btn-reset-password')) { e.preventDefault(); this.handleResetPassword(); return; }
 
-            // Cerrar Sesión
             const logoutBtn = e.target.closest('[data-action="logout"]');
             if (logoutBtn) { e.preventDefault(); this.handleLogout(logoutBtn); return; }
 
-            // Visibilidad de contraseñas
             const toggleBtn = e.target.closest('.component-input-action');
             if (toggleBtn) {
                 const wrapper = toggleBtn.parentElement;
@@ -48,7 +42,6 @@ export class AuthController {
                 else if (input && input.type === 'text') { input.type = 'password'; icon.textContent = 'visibility'; }
             }
 
-            // Botones de retroceso en registro usando el Router
             if (e.target.closest('#btn-back-1')) {
                 this.router.navigate('/ProjectAurora/register');
             } else if (e.target.closest('#btn-back-2')) {
@@ -56,14 +49,12 @@ export class AuthController {
             }
         });
 
-        // Escuchar cuando el router termina de cargar una vista para mostrar la etapa correcta
         window.addEventListener('viewLoaded', (e) => {
             this.checkRegisterStage(e.detail.url);
             this.checkResetPasswordStage(e.detail.url);
         });
     }
 
-    // --- FUNCIÓN PARA MOSTRAR ERROR JSON ---
     showFatalJsonError(containerId, codeId, httpCode, message, type, codeStr, formsToHide = []) {
         const container = document.getElementById(containerId);
         const codeBox = document.getElementById(codeId);
@@ -81,7 +72,6 @@ export class AuthController {
         container.style.display = 'flex';
     }
 
-    // --- LÓGICA DE CONTROL DE ETAPAS BASADA EN URL ---
     checkRegisterStage(url) {
         if (!url.includes('/ProjectAurora/register')) return;
 
@@ -177,7 +167,7 @@ export class AuthController {
             } else {
                 this.showError(errorDiv, window.t(res.message));
             }
-        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); } 
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); } 
         finally { this.setLoading(btn, false); }
     }
 
@@ -202,7 +192,7 @@ export class AuthController {
                 sessionStorage.setItem('reg_dev_code', res.dev_code);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
-        } catch (error) { this.showError(errorDiv, window.t('Error al generar el código.')); } 
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_gen_code')); } 
         finally { this.setLoading(btn, false); }
     }
 
@@ -218,16 +208,13 @@ export class AuthController {
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
-        // --- NUEVO: Extraer preferencias configuradas como invitado ---
         let prefsLocal = { language: 'en-us', openLinksNewTab: true };
         const localData = localStorage.getItem('aurora_prefs');
         if (localData) {
             try { prefsLocal = JSON.parse(localData); } catch(e){}
         }
-        // ---------------------------------------------------------------
 
         try {
-            // Mandamos los datos de las preferencias en el payload
             const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { 
                 email, 
                 code, 
@@ -240,7 +227,7 @@ export class AuthController {
                 sessionStorage.clear(); 
                 window.location.href = '/ProjectAurora/';
             } else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); }
     }
 
     async handleLogin() {
@@ -262,7 +249,7 @@ export class AuthController {
             const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken });
             if (res.success) window.location.href = '/ProjectAurora/'; 
             else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); }
     }
 
     async handleLogout(btn) {
@@ -310,7 +297,7 @@ export class AuthController {
                 linkDisplay.href = res.dev_link; linkDisplay.textContent = window.location.origin + res.dev_link;
                 linkDisplay.dataset.nav = res.dev_link; linkContainer.style.display = 'block';
             } else { this.showError(errorDiv, window.t(res.message)); }
-        } catch (error) { this.showError(errorDiv, window.t('Error al procesar.')); } finally { this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_process')); } finally { this.setLoading(btn, false); }
     }
 
     async handleResetPassword() {
@@ -342,7 +329,7 @@ export class AuthController {
                 this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, window.t(res.message), 'invalid_request_error', 'token_expired_or_used', [form]);
                 this.setLoading(btn, false); 
             }
-        } catch (error) { this.showError(errorDiv, window.t('Error al actualizar.')); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_update')); this.setLoading(btn, false); }
     }
 
     setLoading(btn, isLoading) {
