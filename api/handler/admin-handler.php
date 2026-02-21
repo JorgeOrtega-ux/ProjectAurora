@@ -57,6 +57,13 @@ return function($dbConnection, $action) {
             Utils::sendResponse($adminService->updateField($data->target_uuid, $data->field, $data->value, $adminId));
             break;
 
+        case 'update_preference':
+            if (empty($data->target_uuid) || empty($data->field) || !isset($data->value)) {
+                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            Utils::sendResponse($adminService->updatePreference($data->target_uuid, $data->field, $data->value, $adminId));
+            break;
+
         default:
             Utils::sendResponse(['success' => false, 'message' => 'Acción administrativa no válida.']);
             break;

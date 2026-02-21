@@ -142,5 +142,46 @@ class AdminService {
             return ['success' => false, 'message' => 'Fallo interno de base de datos.'];
         }
     }
+
+    public function updatePreference($targetUuid, $field, $value, $adminId) {
+        $allowedFields = ['language', 'open_links_new_tab', 'theme', 'extended_alerts'];
+        if (!in_array($field, $allowedFields)) return ['success' => false, 'message' => 'Campo de preferencia no válido.'];
+
+        $user = $this->getTargetUser($targetUuid);
+        if (!$user) return ['success' => false, 'message' => 'Usuario no encontrado.'];
+        
+        $userId = $user['id'];
+
+        if ($field === 'language') {
+            $allowedLangs = ['en-us', 'en-gb', 'fr-fr', 'de-de', 'it-it', 'es-latam', 'es-mx', 'es-es', 'pt-br', 'pt-pt'];
+            if (!in_array($value, $allowedLangs)) $value = 'en-us';
+        } elseif ($field === 'theme') {
+            $allowedThemes = ['system', 'light', 'dark'];
+            if (!in_array($value, $allowedThemes)) $value = 'system';
+        } elseif (in_array($field, ['open_links_new_tab', 'extended_alerts'])) {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
+
+        try {
+            $stmt = $this->conn->prepare("SELECT $field FROM user_preferences WHERE user_id = :id");
+            $stmt->execute([':id' => $userId]);
+            $oldValue = $stmt->fetchColumn();
+
+            if ($oldValue !== false && (string)$oldValue === (string)$value) {
+                return ['success' => true, 'message' => 'No hubo cambios en la preferencia.'];
+            }
+
+            $updStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, $field) VALUES (:id, :val) ON DUPLICATE KEY UPDATE $field = :val2");
+            if ($updStmt->execute([':id' => $userId, ':val' => $value, ':val2' => $value])) {
+                $this->logChange($userId, 'pref_' . $field, $oldValue, $value, $adminId);
+                Logger::system("Admin ID: $adminId actualizó la preferencia $field para Usuario ID: $userId. Valor: $value", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Preferencia actualizada por el administrador.'];
+            }
+            return ['success' => false, 'message' => 'Error de base de datos al guardar la preferencia.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error DB en AdminService::updatePreference", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Fallo interno al actualizar preferencia.'];
+        }
+    }
 }
 ?>

@@ -9,7 +9,6 @@ export class AdminManageUserController {
     }
 
     init() {
-        // Ejecutar lógica solo si estamos en la vista de edición de usuario por Admin
         document.body.addEventListener('click', (e) => {
             const view = document.getElementById('admin-manage-user-view');
             if (!view) return;
@@ -38,8 +37,6 @@ export class AdminManageUserController {
             const btnDeleteAvatar = e.target.closest('[data-action="admin-avatar-delete"]');
             if (btnDeleteAvatar) {
                 e.preventDefault();
-                // Reutiliza el diálogo pero modificando la acción en caliente, o lo ejecutamos directo.
-                // Para el admin lo haremos directo con un confirm nativo para mayor rapidez operativa.
                 if(confirm("¿Forzar eliminación del avatar de este usuario?")) {
                     this.deleteAvatar(btnDeleteAvatar);
                 }
@@ -59,6 +56,45 @@ export class AdminManageUserController {
                 this.handleSaveField(btnSaveField.dataset.target, btnSaveField);
                 return; 
             }
+
+            // --- DROPDOWNS DE PREFERENCIAS ---
+            const adminDropdownTrigger = e.target.closest('[data-action="admin-toggle-dropdown"]');
+            if (adminDropdownTrigger) {
+                e.preventDefault();
+                const wrapper = adminDropdownTrigger.closest('.component-dropdown');
+                const module = wrapper.querySelector('.component-module');
+                
+                // Cerrar otros dropdowns abiertos
+                document.querySelectorAll('.component-dropdown .component-module:not(.disabled)').forEach(m => {
+                    if (m !== module) m.classList.add('disabled');
+                });
+                
+                if (module) module.classList.toggle('disabled');
+                return;
+            }
+
+            const adminOptionSelect = e.target.closest('[data-action="admin-select-option"]');
+            if (adminOptionSelect) {
+                e.preventDefault();
+                const wrapper = adminOptionSelect.closest('.component-dropdown');
+                const module = wrapper.querySelector('.component-module');
+                const textDisplay = wrapper.querySelector('.component-dropdown-text');
+                textDisplay.textContent = adminOptionSelect.dataset.label;
+
+                const iconDisplay = wrapper.querySelector('.trigger-select-icon');
+                const optionIcon = adminOptionSelect.querySelector('.component-menu-link-icon span');
+                if (iconDisplay && optionIcon) {
+                    iconDisplay.textContent = optionIcon.textContent;
+                }
+
+                module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
+                adminOptionSelect.classList.add('active');
+                module.classList.add('disabled');
+
+                const prefKey = wrapper.dataset.prefKey;
+                this.updateAdminPreference(prefKey, adminOptionSelect.dataset.value);
+                return;
+            }
         });
 
         document.body.addEventListener('change', (e) => {
@@ -67,6 +103,21 @@ export class AdminManageUserController {
 
             if (e.target.id === 'admin-upload-avatar') {
                 this.handleFileSelection(e.target);
+            }
+
+            // --- TOGGLES DE PREFERENCIAS ---
+            if (e.target.id === 'admin-pref-open-links') {
+                this.updateAdminPreference('open_links_new_tab', e.target.checked);
+            } else if (e.target.id === 'admin-pref-extended-alerts') {
+                this.updateAdminPreference('extended_alerts', e.target.checked);
+            }
+        });
+
+        // --- BUSCADOR DEL DROPDOWN DE IDIOMAS ---
+        document.body.addEventListener('input', (e) => {
+            const filterInput = e.target.closest('[data-action="admin-filter-options"]');
+            if (filterInput) {
+                this.handleDropdownFilter(filterInput);
             }
         });
     }
@@ -276,6 +327,80 @@ export class AdminManageUserController {
         } finally {
             btnSave.disabled = false;
             btnSave.textContent = originalText;
+        }
+    }
+
+    // ==========================================
+    // MÉTODOS DE PREFERENCIAS
+    // ==========================================
+
+    async updateAdminPreference(field, value) {
+        const uuid = this.getTargetUuid();
+        if (!uuid) return;
+
+        const csrfToken = document.getElementById('csrf_token_admin') ? document.getElementById('csrf_token_admin').value : '';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.ADMIN.UPDATE_PREFERENCE, {
+                target_uuid: uuid,
+                field: field,
+                value: value,
+                csrf_token: csrfToken
+            });
+
+            if (res.success) {
+                Toast.show(res.message, 'success');
+            } else {
+                Toast.show(res.message, 'error');
+            }
+        } catch (error) {
+            Toast.show('Error al intentar actualizar la preferencia', 'error');
+        }
+    }
+
+    handleDropdownFilter(searchInput) {
+        const module = searchInput.closest('.component-module');
+        const term = searchInput.value.toLowerCase().trim();
+        const listContainer = module.querySelector('.component-menu-list');
+        
+        let hasMatch = false;
+        let activeElement = null;
+
+        module.querySelectorAll('.component-menu-link').forEach(link => {
+            const label = link.dataset.label.toLowerCase();
+            const isActive = link.classList.contains('active');
+            
+            if (isActive) {
+                activeElement = link;
+            }
+
+            if (label.includes(term)) {
+                link.style.display = 'flex';
+                hasMatch = true;
+            } else {
+                link.style.display = 'none';
+            }
+        });
+
+        const oldMsg = listContainer.querySelector('.dropdown-no-results-container');
+        if (oldMsg) oldMsg.remove();
+
+        if (!hasMatch && term !== '') {
+            if (activeElement) {
+                activeElement.style.display = 'flex';
+            }
+            
+            const termEscaped = term.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            const noResultsHtml = `
+                <div class="dropdown-no-results-container" style="width: 100%; display: flex; flex-direction: column;">
+                    <hr class="component-divider" style="margin: 4px 0; flex-shrink: 0;">
+                    <div style="padding: 12px 16px; text-align: center; font-size: 14px; color: var(--text-secondary);">
+                        No se encontraron resultados para "<b>${termEscaped}</b>"
+                    </div>
+                </div>
+            `;
+            listContainer.insertAdjacentHTML('beforeend', noResultsHtml);
         }
     }
 }

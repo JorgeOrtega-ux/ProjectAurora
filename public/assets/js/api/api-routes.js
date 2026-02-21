@@ -42,6 +42,7 @@ export const API_ROUTES = {
     ADMIN: {
         UPDATE_AVATAR: `${BASE_PATH}/api/admin.update_avatar`,
         DELETE_AVATAR: `${BASE_PATH}/api/admin.delete_avatar`,
-        UPDATE_FIELD: `${BASE_PATH}/api/admin.update_field`
+        UPDATE_FIELD: `${BASE_PATH}/api/admin.update_field`,
+        UPDATE_PREFERENCE: `${BASE_PATH}/api/admin.update_preference`
     }
 };
