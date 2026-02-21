@@ -18,11 +18,11 @@ $settingsMenuDisplay = (!$isAdminRoute && $isSettings) ? 'flex' : 'none';
 $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
 ?>
 <div class="component-module component-module--display-block component-module--size-m component-module--offset-s overflow-y disabled" data-module="moduleSurface">
-    <div class="component-module-panel">
+    
+    <div class="component-module-panel" style="display: <?= $mainMenuDisplay; ?>;">
         <div class="component-module-panel-body">
             <div class="component-module-panel-top">
-                
-                <div class="component-menu-list" id="menu-surface-main" style="display: <?= $mainMenuDisplay; ?>; flex-direction: column; gap: 4px;">
+                <div class="component-menu-list" id="menu-surface-main" style="flex-direction: column; gap: 4px;">
                     <div class="component-menu-link nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">home</span></div>
                         <div class="component-menu-link-text"><span><?= t('surface.home') ?></span></div>
@@ -32,8 +32,15 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                         <div class="component-menu-link-text"><span><?= t('surface.explore') ?></span></div>
                     </div>
                 </div>
+            </div>
+            <div class="component-module-panel-bottom"></div>
+        </div>
+    </div>
 
-                <div class="component-menu-list" id="menu-surface-settings" style="display: <?= $settingsMenuDisplay; ?>; flex-direction: column; gap: 4px;">
+    <div class="component-module-panel" style="display: <?= $settingsMenuDisplay; ?>;">
+        <div class="component-module-panel-body">
+            <div class="component-module-panel-top">
+                <div class="component-menu-list" id="menu-surface-settings" style="flex-direction: column; gap: 4px;">
                     <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
                         <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('surface.back') ?></span></div>
@@ -61,9 +68,17 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                         </div>
                     <?php endif; ?>
                 </div>
+            </div>
+            <div class="component-module-panel-bottom"></div>
+        </div>
+    </div>
 
-                <?php if ($hasAdminRights): ?>
-                <div class="component-menu-list" id="menu-surface-admin" style="display: <?= $adminMenuDisplay; ?>; flex-direction: column; gap: 4px;">
+    <?php if ($hasAdminRights): ?>
+    <div class="component-module-panel" style="display: <?= $adminMenuDisplay; ?>;">
+        <div class="component-module-panel-body">
+            
+            <div class="component-module-panel-top">
+                <div class="component-menu-list" id="menu-surface-admin" style="flex-direction: column; gap: 4px;">
                     <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
                         <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('surface.back') ?></span></div>
@@ -79,6 +94,11 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">group</span></div>
                         <div class="component-menu-link-text"><span><?= t('surface.admin_users') ?></span></div>
                     </div>
+                </div>
+            </div>
+
+            <div class="component-module-panel-bottom">
+                <div class="component-menu-list" style="flex-direction: column; gap: 4px; display: flex;">
                     <div class="component-menu-link nav-item" data-nav="/ProjectAurora/admin/backups">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">backup</span></div>
                         <div class="component-menu-link-text"><span><?= t('surface.admin_backups') ?></span></div>
@@ -88,10 +108,10 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                         <div class="component-menu-link-text"><span><?= t('surface.admin_server') ?></span></div>
                     </div>
                 </div>
-                <?php endif; ?>
-
             </div>
-            <div class="component-module-panel-bottom"></div>
+
         </div>
     </div>
+    <?php endif; ?>
+
 </div>

@@ -69,11 +69,18 @@ export class MainController {
             // 2. Manejo de "clic fuera" para cerrar módulos abiertos
             const openModules = document.querySelectorAll('.component-module:not(.disabled)');
             openModules.forEach(module => {
-                const panel = module.querySelector('.component-module-panel');
-                
                 if (this.dragState.isDragging) return;
 
-                if (panel && !panel.contains(e.target)) {
+                const panels = module.querySelectorAll('.component-module-panel');
+                let clickedInsidePanel = false;
+
+                panels.forEach(panel => {
+                    if (panel.contains(e.target)) {
+                        clickedInsidePanel = true;
+                    }
+                });
+
+                if (panels.length > 0 && !clickedInsidePanel) {
                     this.closeModule(module);
                 }
             });
@@ -110,8 +117,10 @@ export class MainController {
 
     closeModule(module) {
         module.classList.add('disabled');
-        const panel = module.querySelector('.component-module-panel');
-        if(panel) panel.style.transform = '';
+        const panels = module.querySelectorAll('.component-module-panel');
+        panels.forEach(panel => {
+            panel.style.transform = '';
+        });
     }
 
     closeAllModules() {
@@ -133,8 +142,8 @@ export class MainController {
                 const activeModules = document.querySelectorAll('.component-module');
                 activeModules.forEach(m => {
                     m.classList.remove('is-dragging');
-                    const p = m.querySelector('.component-module-panel');
-                    if(p) p.style.transform = '';
+                    const panels = m.querySelectorAll('.component-module-panel');
+                    panels.forEach(p => p.style.transform = '');
                 });
             }
 
@@ -150,22 +159,24 @@ export class MainController {
 
         modules.forEach(module => {
             module.classList.add('bottom-sheet-initialized');
-            const panel = module.querySelector('.component-module-panel');
-            if (!panel) return;
+            const panels = module.querySelectorAll('.component-module-panel');
+            if (panels.length === 0) return;
 
-            const dragHandle = panel.querySelector('.pill-container');
+            panels.forEach(panel => {
+                const dragHandle = panel.querySelector('.pill-container');
 
-            if (dragHandle) {
-                dragHandle.addEventListener('pointerdown', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.handleDragStart(e, module, panel);
-                });
-            }
+                if (dragHandle) {
+                    dragHandle.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleDragStart(e, module, panel);
+                    });
+                }
 
-            panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
-            panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
-            panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
+                panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
+                panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
+                panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
+            });
         });
     }
 

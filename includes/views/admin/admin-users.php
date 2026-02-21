@@ -18,7 +18,7 @@ if (isset($dbConnection)) {
 
 <style>
     /* Estilos propios de Admin Users */
-    .component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 24px auto; z-index: 50; }
+    .component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 24px auto; }
     .component-toolbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); position: relative; }
     .toolbar-group { width: 100%; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .component-toolbar--primary { position: relative; z-index: 2; }

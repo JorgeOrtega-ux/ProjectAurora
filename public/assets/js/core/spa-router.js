@@ -127,23 +127,34 @@ export class SpaRouter {
         // Verificamos que al menos existan main y settings
         if (!mainAppMenu || !settingsMenu) return;
 
+        // Obtenemos los paneles padres que contienen cada menú
+        const mainPanel = mainAppMenu.closest('.component-module-panel');
+        const settingsPanel = settingsMenu.closest('.component-module-panel');
+        const adminPanel = adminMenu ? adminMenu.closest('.component-module-panel') : null;
+
+        // Nos aseguramos que las listas internas siempre tengan display flex
+        // ya que ahora la visibilidad la controlarán los paneles padres
+        mainAppMenu.style.display = 'flex';
+        settingsMenu.style.display = 'flex';
+        if (adminMenu) adminMenu.style.display = 'flex';
+
         if (url.includes('/settings/')) {
-            // Si está en settings, muestra solo settings
-            mainAppMenu.style.display = 'none';
-            settingsMenu.style.display = 'flex';
-            if (adminMenu) adminMenu.style.display = 'none';
+            // Si está en settings, muestra solo el panel de settings
+            if (mainPanel) mainPanel.style.display = 'none';
+            if (settingsPanel) settingsPanel.style.display = 'flex';
+            if (adminPanel) adminPanel.style.display = 'none';
             
-        } else if (url.includes('/admin/') && adminMenu) {
+        } else if (url.includes('/admin/') && adminPanel) {
             // SOLO si la URL es de admin Y el usuario tiene acceso (el div existe)
-            mainAppMenu.style.display = 'none';
-            settingsMenu.style.display = 'none';
-            adminMenu.style.display = 'flex';
+            if (mainPanel) mainPanel.style.display = 'none';
+            if (settingsPanel) settingsPanel.style.display = 'none';
+            if (adminPanel) adminPanel.style.display = 'flex';
             
         } else {
-            // Rutas por defecto (Home, Explore) o fallback de denegación de permisos
-            mainAppMenu.style.display = 'flex';
-            settingsMenu.style.display = 'none';
-            if (adminMenu) adminMenu.style.display = 'none';
+            // Rutas por defecto (Home, Explore) o fallback
+            if (mainPanel) mainPanel.style.display = 'flex';
+            if (settingsPanel) settingsPanel.style.display = 'none';
+            if (adminPanel) adminPanel.style.display = 'none';
         }
     }
 
