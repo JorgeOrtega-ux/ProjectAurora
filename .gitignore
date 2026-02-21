@@ -7,15 +7,24 @@
 public/storage/profilePictures/default/*.png
 public/storage/profilePictures/default/*.jpg
 public/storage/profilePictures/default/*.jpeg
+public/storage/profilePictures/uploaded/*.png
+public/storage/profilePictures/uploaded/*.jpg
+public/storage/profilePictures/uploaded/*.jpeg
+public/storage/profilePictures/uploaded/*.webp
+public/storage/profilePictures/uploaded/*.gif
 
-# --- ARCHIVOS DE SISTEMA Y LOGS ---
-# Logs de error de PHP
+# --- ARCHIVOS DE SISTEMA Y LOGS LOCALES ---
 *.log
 error_log
+debug_2fa_log.txt
+
+# Ignorar la carpeta de logs del sistema profesional, excepto los gitkeep
+/logs/
+!/logs/**/.gitkeep
 
 # Archivos temporales de SO
 .DS_Store
 Thumbs.db
 
-# --- DIRECTORIOS DE DEPENDENCIAS (Si usas Composer en el futuro) ---
+# --- DIRECTORIOS DE DEPENDENCIAS ---
 vendor/

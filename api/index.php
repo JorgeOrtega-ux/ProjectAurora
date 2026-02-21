@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../includes/core/Bootstrap.php';
 
 use App\Core\Utils;
+use App\Core\Logger;
 
 header("Content-Type: application/json; charset=UTF-8");
 
@@ -25,9 +26,11 @@ if (array_key_exists($endpoint, $routeMap)) {
         // Ejecutamos la función inyectando las dependencias necesarias
         $handler($dbConnection, $action);
     } else {
+        Logger::system("Handler no encontrado para el endpoint '$endpoint': $handlerFile", Logger::LEVEL_ERROR);
         Utils::sendResponse(['success' => false, 'message' => 'Error interno: Handler no encontrado.'], 500);
     }
 } else {
+    Logger::system("Intento de acceso a endpoint de API no registrado: '$endpoint'", Logger::LEVEL_WARNING);
     Utils::sendResponse(['success' => false, 'message' => 'Ruta de API no encontrada: ' . htmlspecialchars($endpoint)], 404);
 }
 ?>

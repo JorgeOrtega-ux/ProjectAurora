@@ -4,6 +4,7 @@ namespace App\Api\Services;
 
 use PDO;
 use App\Core\Utils;
+use App\Core\Logger;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use RobThree\Auth\TwoFactorAuth;
@@ -13,17 +14,6 @@ class SettingsService {
 
     public function __construct($db) {
         $this->conn = $db;
-    }
-
-    // ==========================================
-    // MÉTODO DE LOG EXTREMO EN ARCHIVO FÍSICO
-    // ==========================================
-    private function forceDebugLog($message) {
-        // Esto creará un archivo llamado "debug_2fa_log.txt" en la carpeta "api/"
-        $logFile = __DIR__ . '/../debug_2fa_log.txt'; 
-        $timestamp = date('Y-m-d H:i:s');
-        $formattedMessage = "[$timestamp] " . print_r($message, true) . PHP_EOL;
-        @file_put_contents($logFile, $formattedMessage, FILE_APPEND);
     }
 
     private function logChange($userId, $field, $oldValue, $newValue) {
@@ -36,7 +26,7 @@ class SettingsService {
                 ':new_val' => $newValue
             ]);
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en logChange: " . $e->getMessage());
+            Logger::database("Error al registrar cambio en user_changes_log (Field: $field)", Logger::LEVEL_ERROR, $e);
         }
     }
 
@@ -50,7 +40,7 @@ class SettingsService {
             $stmt->execute([':uid' => $userId, ':field' => $field]);
             return (int) $stmt->fetchColumn();
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en countRecentChanges: " . $e->getMessage());
+            Logger::database("Error al contar cambios recientes (Field: $field)", Logger::LEVEL_ERROR, $e);
             return 0;
         }
     }
@@ -74,14 +64,17 @@ class SettingsService {
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($result) {
-                if ($result['is_blocked']) { return false; }
+                if ($result['is_blocked']) { 
+                    Logger::system("Rate limit bloqueó acción '$action' para IP $ip", Logger::LEVEL_WARNING);
+                    return false; 
+                }
                 if ($result['blocked_until'] !== null || strtotime($result['last_attempt']) < strtotime('-5 minutes')) {
                     $this->resetAttempts($action);
                 }
             }
             return true;
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en checkRateLimit: " . $e->getMessage());
+            Logger::database("Error al verificar rate limit para la acción: $action", Logger::LEVEL_ERROR, $e);
             return true;
         }
     }
@@ -100,13 +93,17 @@ class SettingsService {
                 $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
                 $updStmt = $this->conn->prepare($update);
                 $updStmt->execute([':attempts' => $attempts, ':blocked_until' => $blocked_until, ':ip' => $ip, ':action' => $action]);
+                
+                if ($blocked_until) {
+                    Logger::system("IP $ip bloqueada temporalmente por intentos fallidos en la acción '$action'", Logger::LEVEL_WARNING);
+                }
             } else {
                 $insert = "INSERT INTO rate_limits (ip_address, action, attempts, last_attempt) VALUES (:ip, :action, 1, NOW())";
                 $insStmt = $this->conn->prepare($insert);
                 $insStmt->execute([':ip' => $ip, ':action' => $action]);
             }
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en recordActionAttempt: " . $e->getMessage());
+            Logger::database("Error al registrar intento en la tabla rate_limits", Logger::LEVEL_ERROR, $e);
         }
     }
 
@@ -116,7 +113,9 @@ class SettingsService {
             $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':ip' => $ip, ':action' => $action]);
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
+        }
     }
     
     // ==========================================
@@ -141,7 +140,7 @@ class SettingsService {
             $mail->send();
             return true;
         } catch (Exception $e) {
-            $this->forceDebugLog("Error enviando email SMTP: " . $e->getMessage());
+            Logger::system("Error al enviar email SMTP a $to. Asunto: $subject", Logger::LEVEL_ERROR, $e);
             return false;
         }
     }
@@ -154,12 +153,19 @@ class SettingsService {
         if ($this->countRecentChanges($userId, 'avatar', '1 DAY', true) >= 3) {
             return ['success' => false, 'message' => 'js.profile.err_limit_avatar'];
         }
-        if ($file['error'] !== UPLOAD_ERR_OK) { return ['success' => false, 'message' => 'Error al subir la imagen. Código: ' . $file['error']]; }
-        if ($file['size'] > 2 * 1024 * 1024) { return ['success' => false, 'message' => 'La imagen supera el peso máximo de 2MB.']; }
+        if ($file['error'] !== UPLOAD_ERR_OK) { 
+            Logger::system("Fallo en subida de archivo. UPLOAD_ERR_CODE: " . $file['error'], Logger::LEVEL_WARNING);
+            return ['success' => false, 'message' => 'Error al subir la imagen. Código: ' . $file['error']]; 
+        }
+        if ($file['size'] > 2 * 1024 * 1024) { 
+            return ['success' => false, 'message' => 'La imagen supera el peso máximo de 2MB.']; 
+        }
 
         $mime = mime_content_type($file['tmp_name']);
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!in_array($mime, $allowedMimes)) { return ['success' => false, 'message' => 'El formato de imagen no es válido. Solo JPG, PNG, WEBP o GIF.']; }
+        if (!in_array($mime, $allowedMimes)) { 
+            return ['success' => false, 'message' => 'El formato de imagen no es válido. Solo JPG, PNG, WEBP o GIF.']; 
+        }
 
         $image = null;
         switch ($mime) {
@@ -168,10 +174,17 @@ class SettingsService {
             case 'image/webp': $image = @imagecreatefromwebp($file['tmp_name']); break;
             case 'image/gif':  $image = @imagecreatefromgif($file['tmp_name']); break;
         }
-        if (!$image) { return ['success' => false, 'message' => 'El archivo de imagen está corrupto o tiene contenido malicioso.']; }
+        if (!$image) { 
+            Logger::system("Archivo de imagen corrupto o malicioso detectado y rechazado.", Logger::LEVEL_WARNING);
+            return ['success' => false, 'message' => 'El archivo de imagen está corrupto o tiene contenido malicioso.']; 
+        }
 
         $storageDir = __DIR__ . '/../../public/storage/profilePictures/uploaded/';
-        if (!file_exists($storageDir)) { mkdir($storageDir, 0777, true); }
+        if (!file_exists($storageDir)) { 
+            if (!mkdir($storageDir, 0755, true)) {
+                Logger::system("No se pudo crear el directorio de subida: $storageDir", Logger::LEVEL_ERROR);
+            } 
+        }
 
         $filename = Utils::generateUUID() . '_' . time() . '.jpg';
         $filepath = $storageDir . $filename;
@@ -188,53 +201,72 @@ class SettingsService {
             $image = $bg;
         }
 
-        imagejpeg($image, $filepath, 85);
+        if(!imagejpeg($image, $filepath, 85)){
+             Logger::system("Fallo la escritura del archivo de imagen en: $filepath", Logger::LEVEL_ERROR);
+             imagedestroy($image);
+             return ['success' => false, 'message' => 'Error del servidor al guardar la imagen.'];
+        }
         imagedestroy($image);
 
-        $stmt = $this->conn->prepare("SELECT avatar_path FROM users WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $oldAvatar = $stmt->fetchColumn();
+        try {
+            $stmt = $this->conn->prepare("SELECT avatar_path FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $oldAvatar = $stmt->fetchColumn();
 
-        if ($oldAvatar && strpos($oldAvatar, 'uploaded/') !== false) {
-            $oldFile = __DIR__ . '/../../public/' . $oldAvatar;
-            if (file_exists($oldFile)) { @unlink($oldFile); }
-        }
+            if ($oldAvatar && strpos($oldAvatar, 'uploaded/') !== false) {
+                $oldFile = __DIR__ . '/../../public/' . $oldAvatar;
+                if (file_exists($oldFile)) { @unlink($oldFile); }
+            }
 
-        $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
-        if ($updStmt->execute([':path' => $webPath, ':id' => $userId])) {
-            $this->logChange($userId, 'avatar', $oldAvatar, $webPath);
-            $_SESSION['user_avatar'] = $webPath;
-            return ['success' => true, 'message' => 'Foto de perfil actualizada correctamente.', 'avatar' => $webPath];
+            $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
+            if ($updStmt->execute([':path' => $webPath, ':id' => $userId])) {
+                $this->logChange($userId, 'avatar', $oldAvatar, $webPath);
+                $_SESSION['user_avatar'] = $webPath;
+                Logger::system("Avatar actualizado para el usuario ID: $userId", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Foto de perfil actualizada correctamente.', 'avatar' => $webPath];
+            }
+        } catch (\Throwable $e) {
+            Logger::database("Error al actualizar la base de datos durante la subida de avatar", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al actualizar la base de datos.'];
         }
-        return ['success' => false, 'message' => 'Error interno al actualizar la base de datos.'];
+        return ['success' => false, 'message' => 'Error interno desconocido.'];
     }
 
     public function deleteAvatar($userId) {
-        $stmt = $this->conn->prepare("SELECT uuid, nombre, avatar_path FROM users WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->conn->prepare("SELECT uuid, nombre, avatar_path FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$user) { return ['success' => false, 'message' => 'Usuario no encontrado.']; }
+            if (!$user) { return ['success' => false, 'message' => 'Usuario no encontrado.']; }
 
-        $oldAvatar = $user['avatar_path'];
-        if (strpos($oldAvatar, 'uploaded/') !== false) {
-            $oldFile = __DIR__ . '/../../public/' . $oldAvatar;
-            if (file_exists($oldFile)) { @unlink($oldFile); }
+            $oldAvatar = $user['avatar_path'];
+            if (strpos($oldAvatar, 'uploaded/') !== false) {
+                $oldFile = __DIR__ . '/../../public/' . $oldAvatar;
+                if (file_exists($oldFile)) { @unlink($oldFile); }
+            }
+
+            $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
+            $webDir = 'storage/profilePictures/default/';
+            $newWebPath = Utils::generateAndSaveAvatar($user['nombre'], $user['uuid'], $storageDir, $webDir);
+
+            if (!$newWebPath) { 
+                Logger::system("No se pudo generar el avatar por defecto desde UI-Avatars para el usuario ID: $userId", Logger::LEVEL_WARNING);
+                return ['success' => false, 'message' => 'No se pudo generar el avatar por defecto.']; 
+            }
+
+            $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
+            if ($updStmt->execute([':path' => $newWebPath, ':id' => $userId])) {
+                $this->logChange($userId, 'avatar', $oldAvatar, $newWebPath);
+                $_SESSION['user_avatar'] = $newWebPath;
+                Logger::system("Avatar restaurado por defecto para usuario ID: $userId", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Foto de perfil eliminada.', 'avatar' => $newWebPath];
+            }
+            return ['success' => false, 'message' => 'Error al restaurar el avatar.'];
+        } catch (\Throwable $e) {
+            Logger::database("Fallo al eliminar/restaurar avatar", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al procesar la solicitud.'];
         }
-
-        $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
-        $webDir = 'storage/profilePictures/default/';
-        $newWebPath = Utils::generateAndSaveAvatar($user['nombre'], $user['uuid'], $storageDir, $webDir);
-
-        if (!$newWebPath) { return ['success' => false, 'message' => 'No se pudo generar el avatar por defecto.']; }
-
-        $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
-        if ($updStmt->execute([':path' => $newWebPath, ':id' => $userId])) {
-            $this->logChange($userId, 'avatar', $oldAvatar, $newWebPath);
-            $_SESSION['user_avatar'] = $newWebPath;
-            return ['success' => true, 'message' => 'Foto de perfil eliminada.', 'avatar' => $newWebPath];
-        }
-        return ['success' => false, 'message' => 'Error al restaurar el avatar.'];
     }
 
     public function updateField($userId, $field, $newValue) {
@@ -244,35 +276,42 @@ class SettingsService {
         $newValue = trim($newValue);
         if (empty($newValue)) { return ['success' => false, 'message' => 'El valor no puede estar vacío.']; }
 
-        if ($field === 'correo') {
-            if (!filter_var($newValue, FILTER_VALIDATE_EMAIL)) {
-                return ['success' => false, 'message' => 'Formato de correo inválido.'];
+        try {
+            if ($field === 'correo') {
+                if (!filter_var($newValue, FILTER_VALIDATE_EMAIL)) {
+                    return ['success' => false, 'message' => 'Formato de correo inválido.'];
+                }
+                $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo AND id != :id");
+                $checkStmt->execute([':correo' => $newValue, ':id' => $userId]);
+                if ($checkStmt->rowCount() > 0) { return ['success' => false, 'message' => 'El correo ya está en uso.']; }
             }
-            $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo AND id != :id");
-            $checkStmt->execute([':correo' => $newValue, ':id' => $userId]);
-            if ($checkStmt->rowCount() > 0) { return ['success' => false, 'message' => 'El correo ya está en uso.']; }
+
+            $stmt = $this->conn->prepare("SELECT $field FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $oldValue = $stmt->fetchColumn();
+
+            if ($oldValue === $newValue) { return ['success' => true, 'message' => 'No hubo cambios.', 'newValue' => $newValue]; }
+
+            if ($field === 'nombre') {
+                if ($this->countRecentChanges($userId, 'nombre', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_username']; }
+            } else if ($field === 'correo') {
+                if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+            }
+
+            $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
+            if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
+                $this->logChange($userId, $field, $oldValue, $newValue);
+                if ($field === 'nombre') { $_SESSION['user_name'] = $newValue; }
+                else if ($field === 'correo') { $_SESSION['user_email'] = $newValue; }
+                
+                Logger::system("Usuario ID: $userId actualizó exitosamente el campo '$field'", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Actualizado correctamente.', 'newValue' => $newValue];
+            }
+            return ['success' => false, 'message' => 'Error al actualizar el campo.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error al intentar actualizar campo $field", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error en la base de datos al actualizar el campo.'];
         }
-
-        $stmt = $this->conn->prepare("SELECT $field FROM users WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $oldValue = $stmt->fetchColumn();
-
-        if ($oldValue === $newValue) { return ['success' => true, 'message' => 'No hubo cambios.', 'newValue' => $newValue]; }
-
-        if ($field === 'nombre') {
-            if ($this->countRecentChanges($userId, 'nombre', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_username']; }
-        } else if ($field === 'correo') {
-            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
-        }
-
-        $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
-        if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
-            $this->logChange($userId, $field, $oldValue, $newValue);
-            if ($field === 'nombre') { $_SESSION['user_name'] = $newValue; }
-            else if ($field === 'correo') { $_SESSION['user_email'] = $newValue; }
-            return ['success' => true, 'message' => 'Actualizado correctamente.', 'newValue' => $newValue];
-        }
-        return ['success' => false, 'message' => 'Error al actualizar el campo.'];
     }
 
     public function requestEmailChange($userId, $newEmail) {
@@ -284,78 +323,93 @@ class SettingsService {
             return ['success' => false, 'message' => 'Formato de correo inválido.'];
         }
 
-        $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo");
-        $checkStmt->execute([':correo' => $newEmail]);
-        if ($checkStmt->rowCount() > 0) {
-            $this->recordActionAttempt('request_email_change', 5, 5);
-            return ['success' => false, 'message' => 'El correo ya está en uso.'];
+        try {
+            $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo");
+            $checkStmt->execute([':correo' => $newEmail]);
+            if ($checkStmt->rowCount() > 0) {
+                $this->recordActionAttempt('request_email_change', 5, 5);
+                return ['success' => false, 'message' => 'El correo ya está en uso.'];
+            }
+
+            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+
+            $userStmt = $this->conn->prepare("SELECT correo, nombre FROM users WHERE id = :id");
+            $userStmt->execute([':id' => $userId]);
+            $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+            $currentEmail = $user['correo'];
+            $userName = $user['nombre'];
+
+            if ($currentEmail === $newEmail) { return ['success' => false, 'message' => 'El nuevo correo no puede ser el actual.']; }
+
+            $code = sprintf("%06d", mt_rand(1, 999999));
+            $payload = json_encode(['new_email' => $newEmail]);
+            $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+            $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'email_change'";
+            $delStmt = $this->conn->prepare($delQuery);
+            $delStmt->execute([':identifier' => $userId]);
+
+            $query = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (:identifier, 'email_change', :code, :payload, :expires_at)";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([':identifier' => $userId, ':code' => $code, ':payload' => $payload, ':expires_at' => $expires_at]);
+
+            $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
+                        <h2>Cambio de Correo Electrónico</h2><p>Hola {$userName},</p>
+                        <p>Se ha solicitado un cambio en tu cuenta para actualizar el correo a: <b>{$newEmail}</b>.</p>
+                        <p>Para autorizar el cambio, ingresa el siguiente código de seguridad:</p>
+                        <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
+                        <p>Este código expirará en 15 minutos.</p></div>";
+
+            if ($this->sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
+                $this->resetAttempts('request_email_change');
+                Logger::system("Código de cambio de correo enviado al usuario ID: $userId", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Código de verificación enviado a tu correo actual.'];
+            }
+            return ['success' => false, 'message' => 'Error de servidor al intentar enviar el correo.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error en solicitud de cambio de email", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Fallo interno al procesar la solicitud.'];
         }
-
-        if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
-
-        $userStmt = $this->conn->prepare("SELECT correo, nombre FROM users WHERE id = :id");
-        $userStmt->execute([':id' => $userId]);
-        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
-        $currentEmail = $user['correo'];
-        $userName = $user['nombre'];
-
-        if ($currentEmail === $newEmail) { return ['success' => false, 'message' => 'El nuevo correo no puede ser el actual.']; }
-
-        $code = sprintf("%06d", mt_rand(1, 999999));
-        $payload = json_encode(['new_email' => $newEmail]);
-        $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
-
-        $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'email_change'";
-        $delStmt = $this->conn->prepare($delQuery);
-        $delStmt->execute([':identifier' => $userId]);
-
-        $query = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (:identifier, 'email_change', :code, :payload, :expires_at)";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':identifier' => $userId, ':code' => $code, ':payload' => $payload, ':expires_at' => $expires_at]);
-
-        $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2>Cambio de Correo Electrónico</h2><p>Hola {$userName},</p>
-                    <p>Se ha solicitado un cambio en tu cuenta para actualizar el correo a: <b>{$newEmail}</b>.</p>
-                    <p>Para autorizar el cambio, ingresa el siguiente código de seguridad:</p>
-                    <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
-                    <p>Este código expirará en 15 minutos.</p></div>";
-
-        if ($this->sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
-            $this->resetAttempts('request_email_change');
-            return ['success' => true, 'message' => 'Código de verificación enviado a tu correo actual.'];
-        }
-        return ['success' => false, 'message' => 'Error de servidor al intentar enviar el correo.'];
     }
 
     public function confirmEmailChange($userId, $code) {
-        $query = "SELECT id, payload FROM verification_codes WHERE identifier = :identifier AND code = :code AND code_type = 'email_change' AND expires_at > NOW() LIMIT 0,1";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([':identifier' => $userId, ':code' => $code]);
+        try {
+            $query = "SELECT id, payload FROM verification_codes WHERE identifier = :identifier AND code = :code AND code_type = 'email_change' AND expires_at > NOW() LIMIT 0,1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([':identifier' => $userId, ':code' => $code]);
 
-        if ($stmt->rowCount() === 0) { return ['success' => false, 'message' => 'El código de verificación es inválido o expiró.']; }
+            if ($stmt->rowCount() === 0) { 
+                Logger::system("Intento fallido de confirmación de correo (Código inválido/expirado) para User ID: $userId", Logger::LEVEL_WARNING);
+                return ['success' => false, 'message' => 'El código de verificación es inválido o expiró.']; 
+            }
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $payload = json_decode($row['payload'], true);
-        $newEmail = $payload['new_email'];
-        $codeId = $row['id'];
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $payload = json_decode($row['payload'], true);
+            $newEmail = $payload['new_email'];
+            $codeId = $row['id'];
 
-        $userStmt = $this->conn->prepare("SELECT correo FROM users WHERE id = :id");
-        $userStmt->execute([':id' => $userId]);
-        $oldEmail = $userStmt->fetchColumn();
+            $userStmt = $this->conn->prepare("SELECT correo FROM users WHERE id = :id");
+            $userStmt->execute([':id' => $userId]);
+            $oldEmail = $userStmt->fetchColumn();
 
-        if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
 
-        $updStmt = $this->conn->prepare("UPDATE users SET correo = :new_val WHERE id = :id");
-        if ($updStmt->execute([':new_val' => $newEmail, ':id' => $userId])) {
-            $this->logChange($userId, 'correo', $oldEmail, $newEmail);
-            $_SESSION['user_email'] = $newEmail;
-            
-            $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
-            $delStmt->execute([':id' => $codeId]);
+            $updStmt = $this->conn->prepare("UPDATE users SET correo = :new_val WHERE id = :id");
+            if ($updStmt->execute([':new_val' => $newEmail, ':id' => $userId])) {
+                $this->logChange($userId, 'correo', $oldEmail, $newEmail);
+                $_SESSION['user_email'] = $newEmail;
+                
+                $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
+                $delStmt->execute([':id' => $codeId]);
 
-            return ['success' => true, 'message' => 'Correo actualizado correctamente.', 'newValue' => $newEmail];
+                Logger::system("El usuario ID: $userId actualizó su correo exitosamente a $newEmail", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Correo actualizado correctamente.', 'newValue' => $newEmail];
+            }
+            return ['success' => false, 'message' => 'Error crítico al actualizar el correo.'];
+        } catch (\Throwable $e) {
+            Logger::database("Fallo al confirmar y cambiar correo electrónico", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al procesar el cambio.'];
         }
-        return ['success' => false, 'message' => 'Error crítico al actualizar el correo.'];
     }
 
     public function getPreferences($userId) {
@@ -367,52 +421,63 @@ class SettingsService {
             if (!$prefs) { return ['language' => 'en-us', 'open_links_new_tab' => 1, 'theme' => 'system', 'extended_alerts' => 0]; }
             return $prefs;
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en getPreferences: " . $e->getMessage());
+            Logger::database("Error al obtener preferencias para el usuario $userId", Logger::LEVEL_ERROR, $e);
             return ['language' => 'en-us', 'open_links_new_tab' => 1, 'theme' => 'system', 'extended_alerts' => 0];
         }
     }
 
     public function verifyPassword($userId, $password) {
         if (!$this->checkRateLimit('verify_password')) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
-        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $hash = $stmt->fetchColumn();
+        try {
+            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $hash = $stmt->fetchColumn();
 
-        if (password_verify($password, $hash)) {
-            $this->resetAttempts('verify_password');
-            return ['success' => true];
+            if (password_verify($password, $hash)) {
+                $this->resetAttempts('verify_password');
+                return ['success' => true];
+            }
+            $this->recordActionAttempt('verify_password', 5, 5);
+            return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
+        } catch (\Throwable $e) {
+            Logger::database("Fallo al intentar verificar contraseña del usuario $userId", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error del servidor.'];
         }
-        $this->recordActionAttempt('verify_password', 5, 5);
-        return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
     }
 
     public function updatePassword($userId, $currentPassword, $newPassword) {
         if (!$this->checkRateLimit('update_password')) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
 
-        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $hash = $stmt->fetchColumn();
+        try {
+            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $hash = $stmt->fetchColumn();
 
-        if (!password_verify($currentPassword, $hash)) {
-            $this->recordActionAttempt('update_password', 5, 5);
-            return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
+            if (!password_verify($currentPassword, $hash)) {
+                $this->recordActionAttempt('update_password', 5, 5);
+                return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
+            }
+
+            global $APP_CONFIG;
+            $min = (int)($APP_CONFIG['min_password_length'] ?? 12);
+            $max = (int)($APP_CONFIG['max_password_length'] ?? 64);
+            
+            if (strlen($newPassword) < $min || strlen($newPassword) > $max) { return ['success' => false, 'message' => 'js.auth.err_pass_length']; }
+
+            $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            
+            $updStmt = $this->conn->prepare("UPDATE users SET contrasena = :new_hash WHERE id = :id");
+            if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
+                $this->logChange($userId, 'contrasena', $hash, $newHash);
+                $this->resetAttempts('update_password');
+                Logger::system("Usuario ID: $userId actualizó su contraseña con éxito", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
+            }
+            return ['success' => false, 'message' => 'Error al actualizar la contraseña en la base de datos.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error crítico al actualizar contraseña", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al procesar.'];
         }
-
-        global $APP_CONFIG;
-        $min = (int)($APP_CONFIG['min_password_length'] ?? 12);
-        $max = (int)($APP_CONFIG['max_password_length'] ?? 64);
-        
-        if (strlen($newPassword) < $min || strlen($newPassword) > $max) { return ['success' => false, 'message' => 'js.auth.err_pass_length']; }
-
-        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-        
-        $updStmt = $this->conn->prepare("UPDATE users SET contrasena = :new_hash WHERE id = :id");
-        if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
-            $this->logChange($userId, 'contrasena', $hash, $newHash);
-            $this->resetAttempts('update_password');
-            return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
-        }
-        return ['success' => false, 'message' => 'Error al actualizar la contraseña en la base de datos.'];
     }
 
     public function updatePreference($userId, $field, $value) {
@@ -437,67 +502,55 @@ class SettingsService {
             if ($field === 'extended_alerts') { $value = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0; }
 
             $stmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, $field) VALUES (:id, :val) ON DUPLICATE KEY UPDATE $field = :val2");
-            if ($stmt->execute([':id' => $userId, ':val' => $value, ':val2' => $value])) { return ['success' => true, 'message' => 'Guardado.']; }
+            if ($stmt->execute([':id' => $userId, ':val' => $value, ':val2' => $value])) { 
+                return ['success' => true, 'message' => 'Guardado.']; 
+            }
             return ['success' => false, 'message' => 'Error de base de datos.'];
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en updatePreference: " . $e->getMessage());
+            Logger::database("Fallo al actualizar preferencia: $field para ID $userId", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error interno al actualizar preferencia.'];
         }
     }
 
     // ==========================================
-    // MÉTODOS DE 2FA (CON DEBUGGING Y BASE 64 PARA CSP)
+    // MÉTODOS DE 2FA
     // ==========================================
 
     public function init2FA($userId) {
-        // Vaciamos el log si ya existía para tener una lectura limpia de este intento
-        @unlink(__DIR__ . '/../debug_2fa_log.txt');
-        $this->forceDebugLog("INICIANDO PROCESO DE 2FA PARA USUARIO ID: " . $userId);
+        Logger::system("Iniciando proceso 2FA para usuario ID: $userId", Logger::LEVEL_DEBUG);
 
         try {
-            $this->forceDebugLog("Paso 1: Buscando usuario en la base de datos...");
             $stmt = $this->conn->prepare("SELECT correo, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$user) {
-                $this->forceDebugLog("Paso 1 FALSO: Usuario no encontrado.");
+                Logger::system("Proceso 2FA falló: Usuario $userId no encontrado en BD.", Logger::LEVEL_WARNING);
                 return ['success' => false, 'message' => 'Usuario no encontrado.'];
             }
-            $this->forceDebugLog("Paso 1 EXITOSO: Usuario encontrado: " . $user['correo']);
 
             if ($user['two_factor_enabled']) {
-                $this->forceDebugLog("Aviso: El usuario ya tiene 2FA habilitado. Retornando códigos de recuperación.");
+                Logger::system("Proceso 2FA init para usuario $userId: Ya está activado. Retornando conteo de códigos de respaldo.", Logger::LEVEL_DEBUG);
                 $codes = json_decode($user['two_factor_recovery_codes'], true) ?? [];
                 return ['success' => true, 'enabled' => true, 'codes_count' => count($codes)];
             }
 
-            $this->forceDebugLog("Paso 2: Comprobando existencia de clase RobThree\\Auth\\TwoFactorAuth...");
             if (!class_exists('\RobThree\Auth\TwoFactorAuth')) {
-                $this->forceDebugLog("¡ERROR CRÍTICO! La clase RobThree\Auth\TwoFactorAuth no existe. Composer no está configurado correctamente.");
-                throw new \Exception("Clase RobThree no encontrada.");
+                throw new \Exception("Clase RobThree no encontrada. Error crítico de dependencias.");
             }
-            $this->forceDebugLog("Paso 2 EXITOSO: Clase encontrada.");
 
-            $this->forceDebugLog("Paso 3: Instanciando TwoFactorAuth...");
             $tfa = new \RobThree\Auth\TwoFactorAuth('Project Aurora');
             $secret = $user['two_factor_secret'];
             
             if (empty($secret)) {
-                $this->forceDebugLog("Paso 3.1: Generando nuevo secreto porque estaba vacío...");
+                Logger::system("Generando nuevo secreto 2FA para el usuario $userId.", Logger::LEVEL_DEBUG);
                 $secret = $tfa->createSecret();
                 $upd = $this->conn->prepare("UPDATE users SET two_factor_secret = :sec WHERE id = :id");
                 $upd->execute([':sec' => $secret, ':id' => $userId]);
-                $this->forceDebugLog("Paso 3.1 EXITOSO: Secreto generado y guardado.");
-            } else {
-                $this->forceDebugLog("Paso 3 EXITOSO: Secreto ya existía.");
             }
 
-            $this->forceDebugLog("Paso 4: Generando QR usando PHP directamente en DataURI (Base64) para evadir el Content Security Policy...");
             $qrUrl = $tfa->getQRCodeImageAsDataUri('Project Aurora (' . $user['correo'] . ')', $secret);
-            $this->forceDebugLog("Paso 4 EXITOSO: QR generado en formato Base64.");
 
-            $this->forceDebugLog("PROCESO TERMINADO CON ÉXITO. Retornando JSON al cliente.");
             return [
                 'success' => true,
                 'enabled' => false,
@@ -506,13 +559,8 @@ class SettingsService {
             ];
 
         } catch (\Throwable $e) {
-            $this->forceDebugLog("!!! ERROR CATASTRÓFICO DETECTADO !!!");
-            $this->forceDebugLog("Mensaje: " . $e->getMessage());
-            $this->forceDebugLog("Archivo: " . $e->getFile());
-            $this->forceDebugLog("Línea: " . $e->getLine());
-            $this->forceDebugLog("Stack Trace: " . $e->getTraceAsString());
-            
-            return ['success' => false, 'message' => 'Error interno grave. Revisa el log de debug en el servidor.'];
+            Logger::system("Error catastrófico en la inicialización de 2FA", Logger::LEVEL_CRITICAL, $e);
+            return ['success' => false, 'message' => 'Error interno grave. Contacte soporte.'];
         }
     }
     
@@ -528,11 +576,15 @@ class SettingsService {
                 for ($i = 0; $i < 10; $i++) { $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4)); }
                 $upd = $this->conn->prepare("UPDATE users SET two_factor_enabled = 1, two_factor_recovery_codes = :codes WHERE id = :id");
                 $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
+                
+                Logger::system("El usuario ID: $userId habilitó exitosamente el 2FA", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => '2FA activado correctamente', 'recovery_codes' => $recoveryCodes];
             }
+            
+            Logger::system("Intento fallido de activar 2FA (Código incorrecto) para el usuario ID: $userId", Logger::LEVEL_WARNING);
             return ['success' => false, 'message' => 'Código de verificación incorrecto.'];
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en enable2FA: " . $e->getMessage());
+            Logger::database("Error en el proceso enable2FA", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error interno.'];
         }
     }
@@ -543,13 +595,17 @@ class SettingsService {
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
-            if (!password_verify($password, $hash)) { return ['success' => false, 'message' => 'Contraseña incorrecta.']; }
+            if (!password_verify($password, $hash)) { 
+                return ['success' => false, 'message' => 'Contraseña incorrecta.']; 
+            }
             
             $upd = $this->conn->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = :id");
             $upd->execute([':id' => $userId]);
+            
+            Logger::system("El usuario ID: $userId ha desactivado el 2FA", Logger::LEVEL_INFO);
             return ['success' => true, 'message' => '2FA desactivado.'];
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en disable2FA: " . $e->getMessage());
+            Logger::database("Fallo al desactivar 2FA", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error interno.'];
         }
     }
@@ -567,9 +623,11 @@ class SettingsService {
             
             $upd = $this->conn->prepare("UPDATE users SET two_factor_recovery_codes = :codes WHERE id = :id");
             $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
+            
+            Logger::system("El usuario ID: $userId regeneró sus códigos de recuperación 2FA", Logger::LEVEL_INFO);
             return ['success' => true, 'message' => 'Códigos generados correctamente.', 'recovery_codes' => $recoveryCodes];
         } catch (\Throwable $e) {
-            $this->forceDebugLog("Error en regenerate2FACodes: " . $e->getMessage());
+            Logger::database("Error al regenerar códigos de 2FA", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error interno.'];
         }
     }

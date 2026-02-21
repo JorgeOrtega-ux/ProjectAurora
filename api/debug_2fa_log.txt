@@ -1,4 +1,0 @@
-[2026-02-20 18:07:50] INICIANDO PROCESO DE 2FA PARA USUARIO ID: 1
-[2026-02-20 18:07:50] Paso 1: Buscando usuario en la base de datos...
-[2026-02-20 18:07:50] Paso 1 EXITOSO: Usuario encontrado: al20328051890088@gmail.com
-[2026-02-20 18:07:50] Aviso: El usuario ya tiene 2FA habilitado. Retornando códigos de recuperación.

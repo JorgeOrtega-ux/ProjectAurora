@@ -3,6 +3,7 @@
 
 use App\Api\Services\AuthService;
 use App\Core\Utils;
+use App\Core\Logger;
 
 // --- FUNCIONES DE VALIDACIÓN DE SEGURIDAD DINÁMICAS ---
 
@@ -62,6 +63,7 @@ return function($dbConnection, $action) {
     if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password', 'verify_2fa'])) {
         // Si el token no es válido, se bloquea la petición
         if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+            Logger::system("Fallo de validación CSRF en auth-handler para la acción: $action", Logger::LEVEL_WARNING);
             Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
         }
     }

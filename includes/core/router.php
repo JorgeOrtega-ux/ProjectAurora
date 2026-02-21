@@ -2,6 +2,8 @@
 // includes/core/router.php
 namespace App\Core;
 
+use App\Core\Logger;
+
 class Router {
     private $routes;
     private $basePath;
@@ -35,6 +37,7 @@ class Router {
 
         // 4. Buscar la ruta en el mapa
         if (!array_key_exists($relativePath, $this->routes)) {
+            Logger::system("Intento de acceso a ruta no encontrada (404): $relativePath", Logger::LEVEL_WARNING);
             return ['view' => '404.php', 'access' => 'public', 'layout' => 'main'];
         }
 
@@ -52,6 +55,7 @@ class Router {
 
         // A) Ruta protegida (solo logueados) pero el usuario NO está logueado
         if ($access === 'auth' && !$isLoggedIn) {
+            Logger::system("Intento de acceso no autorizado a ruta protegida: $relativePath", Logger::LEVEL_INFO);
             if ($isApiRequest) {
                 header('X-SPA-Redirect: ' . $this->basePath . '/login');
                 exit;
@@ -63,6 +67,7 @@ class Router {
         // B) Ruta para invitados (ej. login) pero el usuario YA está logueado
         if ($access === 'guest' && $isLoggedIn) {
             if ($relativePath !== '/settings/guest') {
+                Logger::system("Usuario logueado intentó acceder a ruta de invitado: $relativePath", Logger::LEVEL_INFO);
                 if ($isApiRequest) {
                     header('X-SPA-Redirect: ' . $this->basePath . '/');
                     exit;

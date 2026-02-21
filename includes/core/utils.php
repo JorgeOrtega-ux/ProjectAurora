@@ -3,6 +3,7 @@
 namespace App\Core;
 
 use Exception;
+use App\Core\Logger;
 
 class Utils {
     
@@ -69,11 +70,9 @@ class Utils {
     /**
      * Carga las variables de entorno desde el archivo .env
      */
-   /**
-     * Carga las variables de entorno desde el archivo .env
-     */
     public static function loadEnv($path) {
         if (!file_exists($path)) {
+            Logger::system("El archivo .env no existe en la ruta especificada: $path", Logger::LEVEL_CRITICAL);
             throw new Exception("El archivo .env no existe en la ruta especificada.");
         }
 

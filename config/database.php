@@ -4,6 +4,7 @@ namespace App\Config;
 
 use PDO;
 use PDOException;
+use App\Core\Logger;
 
 class Database {
     private $host;
@@ -22,9 +23,14 @@ class Database {
 
     public function getConnection() {
         $this->conn = null;
-        $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
-        $this->conn->exec("set names utf8");
-        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try {
+            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
+            $this->conn->exec("set names utf8");
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            Logger::database("Fallo al conectar a la base de datos.", Logger::LEVEL_CRITICAL, $e);
+            throw $e; // Relanzamos para que Bootstrap despliegue el error 500 visualmente
+        }
         
         return $this->conn;
     }

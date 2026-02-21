@@ -2,13 +2,31 @@
 // includes/core/Bootstrap.php
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/Logger.php'; // Cargamos el Logger inmediatamente
 
 use App\Core\Utils;
 use App\Config\Database;
+use App\Core\Logger;
+
+// --- MANEJADOR GLOBAL DE ERRORES Y EXCEPCIONES ---
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $level = Logger::LEVEL_WARNING;
+    if (in_array($errno, [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR])) {
+        $level = Logger::LEVEL_ERROR;
+    }
+    Logger::system("PHP Error [$errno]: $errstr in $errfile on line $errline", $level);
+    return false; // Permitir que PHP continúe su flujo normal
+});
+
+set_exception_handler(function($e) {
+    Logger::system("Uncaught Exception: " . $e->getMessage(), Logger::LEVEL_CRITICAL, $e);
+});
+// ------------------------------------------------
 
 try {
     Utils::loadEnv(__DIR__ . '/../../.env');
-} catch (Exception $e) {
+} catch (\Exception $e) {
+    Logger::system("No se pudo cargar el archivo .env", Logger::LEVEL_CRITICAL, $e);
     die("Error crítico del sistema: No se pudo cargar el archivo de configuración de entorno.");
 }
 
@@ -25,8 +43,6 @@ if ($appEnv === 'production' && !$isSecure) {
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-
-// AQUI ESTÁ LA SOLUCIÓN: Se agregó https://unpkg.com a connect-src
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://ui-avatars.com; connect-src 'self' https://unpkg.com; frame-ancestors 'self';");
 
 if ($isSecure) {
@@ -67,9 +83,11 @@ try {
             }
         }
     } catch (\Throwable $e) {
-        // Ignorar el error si la tabla aún no existe al momento de iniciar por primera vez
+        Logger::database("Fallo al cargar server_config. ¿Aún no se crean las tablas?", Logger::LEVEL_WARNING, $e);
     }
-} catch (\Throwable $e) { // <-- CAMBIADO DE PDOException A \Throwable
+} catch (\Throwable $e) { 
+    Logger::system("Fallo crítico en la inicialización (BD o Configuración)", Logger::LEVEL_CRITICAL, $e);
+
     $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
                     (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                     (isset($_SERVER['HTTP_X_SPA_REQUEST']));
@@ -77,7 +95,6 @@ try {
     if ($isApiRequest) {
         http_response_code(500);
         header('Content-Type: application/json; charset=UTF-8');
-        // <-- AHORA MOSTRARÁ EL ERROR REAL
         echo json_encode(['success' => false, 'message' => 'Error crítico: ' . $e->getMessage()]);
         exit;
     } else {
@@ -94,6 +111,8 @@ $langFile = __DIR__ . '/../../translations/' . $fileName . '.json';
 
 if (file_exists($langFile)) {
     $translations = json_decode(file_get_contents($langFile), true);
+} else {
+    Logger::system("Archivo de idioma no encontrado: $langFile", Logger::LEVEL_WARNING);
 }
 
 // Helper global para vistas y controladores con reemplazo dinámico
