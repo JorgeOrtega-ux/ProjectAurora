@@ -62,6 +62,7 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                     <?php endif; ?>
                 </div>
 
+                <?php if ($hasAdminRights): ?>
                 <div class="component-menu-list" id="menu-surface-admin" style="display: <?= $adminMenuDisplay; ?>; flex-direction: column; gap: 4px;">
                     <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
@@ -87,6 +88,7 @@ $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
                         <div class="component-menu-link-text"><span><?= t('surface.admin_server') ?></span></div>
                     </div>
                 </div>
+                <?php endif; ?>
 
             </div>
             <div class="component-module-panel-bottom"></div>

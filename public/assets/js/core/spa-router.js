@@ -1,4 +1,4 @@
-// public/assets/js/spa-router.js
+// public/assets/js/core/spa-router.js
 export class SpaRouter {
     constructor(options = {}) {
         this.outlet = document.querySelector(options.outlet || '#app-router-outlet');
@@ -115,7 +115,7 @@ export class SpaRouter {
     updateSurfaceMenu(url) {
         const mainAppMenu = document.getElementById('menu-surface-main');
         const settingsMenu = document.getElementById('menu-surface-settings');
-        const adminMenu = document.getElementById('menu-surface-admin'); // Seleccionamos el nuevo menú admin
+        const adminMenu = document.getElementById('menu-surface-admin');
 
         // Verificamos que al menos existan main y settings
         if (!mainAppMenu || !settingsMenu) return;
@@ -126,14 +126,14 @@ export class SpaRouter {
             settingsMenu.style.display = 'flex';
             if (adminMenu) adminMenu.style.display = 'none';
             
-        } else if (url.includes('/admin/')) {
-            // Si está en admin, muestra solo admin
+        } else if (url.includes('/admin/') && adminMenu) {
+            // SOLO si la URL es de admin Y el usuario tiene acceso (el div existe)
             mainAppMenu.style.display = 'none';
             settingsMenu.style.display = 'none';
-            if (adminMenu) adminMenu.style.display = 'flex';
+            adminMenu.style.display = 'flex';
             
         } else {
-            // Rutas por defecto (Home, Explore)
+            // Rutas por defecto (Home, Explore) o fallback de denegación de permisos
             mainAppMenu.style.display = 'flex';
             settingsMenu.style.display = 'none';
             if (adminMenu) adminMenu.style.display = 'none';
