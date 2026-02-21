@@ -8,11 +8,21 @@ export class AuthController {
         this.turnstileReady = false;
         this.currentTurnstileId = undefined;
 
-        // Listener para la carga del script externo de Turnstile
+        console.log("🛠️ [AuthController] Instanciado. Definiendo window.onTurnstileLoad...");
+
+        // Listener para la carga normal
         window.onTurnstileLoad = () => {
+            console.log("🔥 [Turnstile] EVENTO GLOBAL onTurnstileLoad DISPARADO! La librería de CF se descargó.");
             this.turnstileReady = true;
             this.renderCurrentViewTurnstile();
         };
+
+        // Respaldo: Si la librería ya había cargado antes
+        if (window.turnstile) {
+            console.warn("⚠️ [Turnstile] window.turnstile ya existía. Forzando bandera a true.");
+            this.turnstileReady = true;
+            this.renderCurrentViewTurnstile(); // <--- ¡ESTA ES LA LÍNEA MÁGICA QUE FALTABA!
+        }
 
         this.init();
         
@@ -22,41 +32,117 @@ export class AuthController {
         this.checkForgotPasswordStage(window.location.pathname);
     }
 
-    // --- MÉTODOS TURNSTILE ---
+    // --- MÉTODOS TURNSTILE (CON LOGS EXTREMOS Y SOPORTE SPA) ---
 
     renderTurnstile(containerId) {
-        if (!window.turnstile) return;
+        console.log(`🔍 [Turnstile] Intentando renderizar en el contenedor: #${containerId}`);
+        
+        if (!window.turnstile) {
+            console.error("❌ [Turnstile] FATAL: window.turnstile NO está definido. El script de Cloudflare no se cargó o fue bloqueado.");
+            return;
+        }
+        
         const box = document.getElementById(containerId);
-        if (box) {
-            if (this.currentTurnstileId !== undefined) {
-                try { turnstile.remove(this.currentTurnstileId); } catch(e){}
-            }
-            const siteKey = window.APP_CONFIG?.turnstile_site_key || '1x00000000000000000000AA';
-            this.currentTurnstileId = turnstile.render(`#${containerId}`, {
+        if (!box) {
+            console.error(`❌ [Turnstile] FATAL: El div #${containerId} no existe en el DOM en este instante.`);
+            return;
+        }
+
+        console.log(`✅ [Turnstile] Contenedor #${containerId} encontrado en el HTML.`);
+
+        // Limpieza absoluta de instancias zombie
+        if (this.currentTurnstileId !== undefined) {
+            console.log(`🧹 [Turnstile] Limpiando instancia previa: ${this.currentTurnstileId}`);
+            try { turnstile.remove(this.currentTurnstileId); } catch(e) { console.warn("Fallo al remover:", e); }
+            this.currentTurnstileId = undefined;
+        }
+
+        // Destrucción de iframes residuales del router SPA y preparación visual
+        box.innerHTML = '';
+        box.style.border = "2px dashed yellow"; // Borde amarillo temporal
+        box.style.minHeight = "65px"; 
+        box.style.display = "block";
+
+        const siteKey = window.APP_CONFIG?.turnstile_site_key || '1x00000000000000000000AA';
+        console.log(`🔑 [Turnstile] Llamando a turnstile.render() con SiteKey: ${siteKey}`);
+        
+        try {
+            // Renderizado pasando el NODO real (box), no el string
+            this.currentTurnstileId = turnstile.render(box, {
                 sitekey: siteKey,
-                appearance: 'interaction-only'
+                theme: 'auto',
+                callback: (token) => {
+                    console.log("🟢 [Turnstile] ¡ÉXITO! Cloudflare aprobó el token:", token.substring(0, 15) + "...");
+                    box.dataset.token = token; // Respaldo del token en el DOM
+                    box.style.border = "2px solid green"; // Borde verde si funcionó
+                },
+                'expired-callback': () => {
+                    console.warn("⚠️ [Turnstile] Token expirado, solicitando uno nuevo...");
+                    turnstile.reset(this.currentTurnstileId);
+                    box.dataset.token = '';
+                    box.style.border = "2px solid orange";
+                },
+                'error-callback': (err) => {
+                    console.error("❌ [Turnstile] ERROR interno reportado por Cloudflare:", err);
+                    box.style.border = "2px solid red";
+                }
             });
+            console.log(`🎉 [Turnstile] turnstile.render() se ejecutó sin colapsar. Widget ID asignado: ${this.currentTurnstileId}`);
+        } catch (error) {
+            console.error("💥 [Turnstile] EXCEPCIÓN de JS al intentar renderizar:", error);
         }
     }
 
     renderCurrentViewTurnstile() {
-        if (!this.turnstileReady) return;
+        console.log("🚦 [Turnstile] renderCurrentViewTurnstile convocado. ¿Está turnstileReady?:", this.turnstileReady);
+        if (!this.turnstileReady) {
+            console.warn("⏳ [Turnstile] Rechazado. La bandera turnstileReady es false.");
+            return;
+        }
         const url = window.location.pathname;
+        console.log("📍 [Turnstile] Evaluando ruta actual:", url);
+
         if (url.includes('/login')) this.renderTurnstile('turnstile-box-login');
         else if (url.includes('/register')) this.renderTurnstile('turnstile-box-register');
         else if (url.includes('/forgot-password')) this.renderTurnstile('turnstile-box-forgot');
         else if (url.includes('/reset-password')) this.renderTurnstile('turnstile-box-reset');
+        else console.log("⏭️ [Turnstile] La ruta actual no requiere captcha.");
     }
 
     getTurnstileToken() {
-        return window.turnstile && this.currentTurnstileId !== undefined 
-            ? turnstile.getResponse(this.currentTurnstileId) 
-            : '';
+        if (!window.turnstile || this.currentTurnstileId === undefined) {
+            console.warn("⚠️ [Turnstile] getTurnstileToken llamado pero el widget no existe.");
+            return '';
+        }
+        
+        // Intentamos obtenerlo de forma oficial
+        let token = turnstile.getResponse(this.currentTurnstileId);
+        
+        // Fallback: Si la API de Turnstile se "marea" por el SPA, lo sacamos del DOM
+        if (!token) {
+            console.warn("⚠️ [Turnstile] turnstile.getResponse devolvió vacío. Buscando respaldo en el dataset del DOM...");
+            const urls = ['turnstile-box-login', 'turnstile-box-register', 'turnstile-box-forgot', 'turnstile-box-reset'];
+            for (let id of urls) {
+                const box = document.getElementById(id);
+                if (box && box.dataset.token) {
+                    token = box.dataset.token;
+                    console.log("✅ [Turnstile] Respaldo recuperado del DOM.");
+                    break;
+                }
+            }
+        }
+        return token || '';
     }
 
     resetTurnstile() {
         if (window.turnstile && this.currentTurnstileId !== undefined) {
             turnstile.reset(this.currentTurnstileId);
+            // Limpiar también los respaldos del DOM
+            const urls = ['turnstile-box-login', 'turnstile-box-register', 'turnstile-box-forgot', 'turnstile-box-reset'];
+            for (let id of urls) {
+                const box = document.getElementById(id);
+                if (box) box.dataset.token = '';
+            }
         }
     }
 
@@ -206,14 +292,15 @@ export class AuthController {
     }
 
     async handleRegisterStage1() {
+        const errorDiv = document.getElementById('register-error-1');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
         const emailInput = document.getElementById('reg-email');
         const passwordInput = document.getElementById('reg-password');
-        const errorDiv = document.getElementById('register-error-1');
         const btn = document.getElementById('btn-next-1');
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
-        const cf_token = this.getTurnstileToken();
 
         if (!emailInput.value || !passwordInput.value) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
 
@@ -245,7 +332,7 @@ export class AuthController {
 
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile(); // El token fue utilizado, reseteamos para siguientes etapas
+            this.resetTurnstile();
 
             if (res.success) {
                 sessionStorage.setItem('reg_email', email);
@@ -259,13 +346,14 @@ export class AuthController {
     }
 
     async handleRegisterStage2() {
-        const usernameInput = document.getElementById('reg-username');
         const errorDiv = document.getElementById('register-error-2');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
+        const usernameInput = document.getElementById('reg-username');
         const btn = document.getElementById('btn-next-2');
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
-        const cf_token = this.getTurnstileToken();
 
         const email = sessionStorage.getItem('reg_email');
         const password = sessionStorage.getItem('reg_password');
@@ -298,13 +386,14 @@ export class AuthController {
     }
 
     async handleRegisterFinal() {
-        const code = document.getElementById('reg-code').value;
         const errorDiv = document.getElementById('register-error-3');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
+        const code = document.getElementById('reg-code').value;
         const btn = document.getElementById('btn-register-final');
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
-        const cf_token = this.getTurnstileToken();
         const email = sessionStorage.getItem('reg_email');
 
         if (!code || code.length !== 6) { this.showError(errorDiv, window.t('js.auth.err_code')); return; }
@@ -335,14 +424,15 @@ export class AuthController {
     }
 
     async handleLogin() {
+        const errorDiv = document.getElementById('login-error');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
         const btn = document.getElementById('btn-login'); 
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-login') ? document.getElementById('hp-login').value : '';
-        const cf_token = this.getTurnstileToken();
-        const errorDiv = document.getElementById('login-error');
 
         if (!email || !password) {
             this.showError(errorDiv, window.t ? window.t('js.auth.err_fields') : 'Completa todos los campos');
@@ -421,13 +511,14 @@ export class AuthController {
     }
 
     async handleForgotPassword() {
+        const errorDiv = document.getElementById('forgot-error');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
         const email = document.getElementById('forgot-email').value;
         const btn = document.getElementById('btn-forgot-password');
-        const errorDiv = document.getElementById('forgot-error');
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-forgot') ? document.getElementById('hp-forgot').value : '';
-        const cf_token = this.getTurnstileToken();
 
         if (!email) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
 
@@ -449,17 +540,18 @@ export class AuthController {
     }
 
     async handleResetPassword() {
+        const errorDiv = document.getElementById('reset-error');
+        const form = document.getElementById('form-reset-password');
+        const cf_token = this.getTurnstileToken();
+        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
+
         const token = new URLSearchParams(window.location.search).get('token');
         const pass1 = document.getElementById('reset-password-1').value;
         const pass2 = document.getElementById('reset-password-2').value;
         const btn = document.getElementById('btn-reset-password');
-        const errorDiv = document.getElementById('reset-error');
         const successDiv = document.getElementById('reset-success');
-        const form = document.getElementById('form-reset-password');
-        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const hp_field = document.getElementById('hp-reset') ? document.getElementById('hp-reset').value : '';
-        const cf_token = this.getTurnstileToken();
 
         this.hideError(errorDiv);
         
