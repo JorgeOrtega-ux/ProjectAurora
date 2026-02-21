@@ -394,6 +394,8 @@
     --border-lighter: rgba(0, 0, 0, 0.08);
     --border-transparent-20: #00000020;
     --overlay-dark: rgba(0, 0, 0, 0.4);
+    
+    --border-dynamic: 1px solid var(--border-lighter);
 
     /* --- Actions --- */
     --action-primary: var(--sl-color-neutral-900);
@@ -481,8 +483,9 @@
         --color-error: var(--sl-color-red-400);
         --color-error-bg: rgba(220, 38, 38, 0.15);
 
-        /* Shadows */
-        --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+        /* Shadows y Bordes Dinámicos para modo oscuro */
+        --shadow-card: none;
+        --border-dynamic: 1px solid #ffffff20;
     }
 }
 
@@ -527,6 +530,7 @@ html.dark-theme {
     --color-error: var(--sl-color-red-400);
     --color-error-bg: rgba(220, 38, 38, 0.15);
     
-    /* Shadows */
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    /* Shadows y Bordes Dinámicos para modo oscuro */
+    --shadow-card: none;
+    --border-dynamic: 1px solid #ffffff20;
 }
