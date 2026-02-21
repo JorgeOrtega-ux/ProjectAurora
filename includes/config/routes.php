@@ -23,5 +23,11 @@ return [
     '/settings/devices' => ['view' => 'settings-devices.php', 'access' => 'auth', 'layout' => 'main'],
 
     // Ruta especial
-    '/settings/guest' => ['view' => 'settings-guest.php', 'access' => 'guest', 'layout' => 'main']
+    '/settings/guest' => ['view' => 'settings-guest.php', 'access' => 'guest', 'layout' => 'main'],
+
+    // --- RUTAS ADMIN ---
+    '/admin/dashboard' => ['view' => 'admin-dashboard.php', 'access' => 'admin', 'layout' => 'main'],
+    '/admin/users' => ['view' => 'admin-users.php', 'access' => 'admin', 'layout' => 'main'],
+    '/admin/backups' => ['view' => 'admin-backups.php', 'access' => 'admin', 'layout' => 'main'],
+    '/admin/server' => ['view' => 'admin-server.php', 'access' => 'admin', 'layout' => 'main']
 ];

@@ -11,7 +11,7 @@ $userRoleOption = $isLoggedInOption && isset($_SESSION['user_role']) ? $_SESSION
             <div class="component-menu-list">
                 
                 <?php if ($isLoggedInOption && in_array($userRoleOption, ['administrator', 'founder'])): ?>
-                <a href="#" class="component-menu-link component-menu-link--bordered" onclick="event.preventDefault();">
+                <a href="/ProjectAurora/admin/dashboard" class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/admin/dashboard">
                     <div class="component-menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
                     <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('module.admin') ?></span></div>
                 </a>

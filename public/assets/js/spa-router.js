@@ -115,14 +115,28 @@ export class SpaRouter {
     updateSurfaceMenu(url) {
         const mainAppMenu = document.getElementById('menu-surface-main');
         const settingsMenu = document.getElementById('menu-surface-settings');
+        const adminMenu = document.getElementById('menu-surface-admin'); // Seleccionamos el nuevo menú admin
+
+        // Verificamos que al menos existan main y settings
         if (!mainAppMenu || !settingsMenu) return;
 
         if (url.includes('/settings/')) {
+            // Si está en settings, muestra solo settings
             mainAppMenu.style.display = 'none';
             settingsMenu.style.display = 'flex';
+            if (adminMenu) adminMenu.style.display = 'none';
+            
+        } else if (url.includes('/admin/')) {
+            // Si está en admin, muestra solo admin
+            mainAppMenu.style.display = 'none';
+            settingsMenu.style.display = 'none';
+            if (adminMenu) adminMenu.style.display = 'flex';
+            
         } else {
+            // Rutas por defecto (Home, Explore)
             mainAppMenu.style.display = 'flex';
             settingsMenu.style.display = 'none';
+            if (adminMenu) adminMenu.style.display = 'none';
         }
     }
 

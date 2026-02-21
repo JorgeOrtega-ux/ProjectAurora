@@ -1,15 +1,27 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 $isLoggedIn = isset($_SESSION['user_id']);
+$userRole = $_SESSION['user_role'] ?? 'user';
 $currentUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+
 $isSettings = strpos($currentUri, '/settings/') !== false;
-$mainMenuDisplay = $isSettings ? 'none' : 'flex';
-$settingsMenuDisplay = $isSettings ? 'flex' : 'none';
+$isAdminRoute = strpos($currentUri, '/admin/') !== false;
+$hasAdminRights = in_array($userRole, ['administrator', 'founder']);
+
+// Si intenta acceder a una ruta de admin pero no tiene permisos, el menú no cambiará al de admin
+if ($isAdminRoute && !$hasAdminRights) {
+    $isAdminRoute = false;
+}
+
+$adminMenuDisplay = $isAdminRoute ? 'flex' : 'none';
+$settingsMenuDisplay = (!$isAdminRoute && $isSettings) ? 'flex' : 'none';
+$mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
 ?>
 <div class="component-module component-module--display-block component-module--size-m component-module--offset-s disabled" data-module="moduleSurface">
     <div class="component-module-panel">
         <div class="component-module-panel-body">
             <div class="component-module-panel-top">
+                
                 <div class="component-menu-list" id="menu-surface-main" style="display: <?= $mainMenuDisplay; ?>; flex-direction: column; gap: 4px;">
                     <div class="component-menu-link nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">home</span></div>
@@ -20,6 +32,7 @@ $settingsMenuDisplay = $isSettings ? 'flex' : 'none';
                         <div class="component-menu-link-text"><span><?= t('surface.explore') ?></span></div>
                     </div>
                 </div>
+
                 <div class="component-menu-list" id="menu-surface-settings" style="display: <?= $settingsMenuDisplay; ?>; flex-direction: column; gap: 4px;">
                     <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
@@ -48,6 +61,33 @@ $settingsMenuDisplay = $isSettings ? 'flex' : 'none';
                         </div>
                     <?php endif; ?>
                 </div>
+
+                <div class="component-menu-list" id="menu-surface-admin" style="display: <?= $adminMenuDisplay; ?>; flex-direction: column; gap: 4px;">
+                    <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
+                        <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
+                        <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('surface.back') ?></span></div>
+                    </div>
+                    
+                    <div style="height: 1px; background-color: var(--divider-color); margin: 4px 0; flex-shrink: 0;"></div>
+
+                    <div class="component-menu-link nav-item" data-nav="/ProjectAurora/admin/dashboard">
+                        <div class="component-menu-link-icon"><span class="material-symbols-rounded">dashboard</span></div>
+                        <div class="component-menu-link-text"><span><?= t('surface.admin_dashboard') ?></span></div>
+                    </div>
+                    <div class="component-menu-link nav-item" data-nav="/ProjectAurora/admin/users">
+                        <div class="component-menu-link-icon"><span class="material-symbols-rounded">group</span></div>
+                        <div class="component-menu-link-text"><span><?= t('surface.admin_users') ?></span></div>
+                    </div>
+                    <div class="component-menu-link nav-item" data-nav="/ProjectAurora/admin/backups">
+                        <div class="component-menu-link-icon"><span class="material-symbols-rounded">backup</span></div>
+                        <div class="component-menu-link-text"><span><?= t('surface.admin_backups') ?></span></div>
+                    </div>
+                    <div class="component-menu-link nav-item" data-nav="/ProjectAurora/admin/server">
+                        <div class="component-menu-link-icon"><span class="material-symbols-rounded">dns</span></div>
+                        <div class="component-menu-link-text"><span><?= t('surface.admin_server') ?></span></div>
+                    </div>
+                </div>
+
             </div>
             <div class="component-module-panel-bottom"></div>
         </div>

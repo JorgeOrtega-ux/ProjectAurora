@@ -52,6 +52,7 @@ class Router {
         $access = $routeConfig['access'] ?? 'public';
         $isLoggedIn = isset($_SESSION['user_id']);
         $isApiRequest = !empty($_SERVER['HTTP_X_SPA_REQUEST']);
+        $userRole = $_SESSION['user_role'] ?? 'user';
 
         // A) Ruta protegida (solo logueados) pero el usuario NO está logueado
         if ($access === 'auth' && !$isLoggedIn) {
@@ -74,6 +75,15 @@ class Router {
                 }
                 header("Location: {$this->basePath}/");
                 exit;
+            }
+        }
+
+        // C) Ruta para administradores (solo logged y con rol específico)
+        if ($access === 'admin') {
+            if (!$isLoggedIn || !in_array($userRole, ['administrator', 'founder'])) {
+                Logger::system("Intento de acceso denegado a ruta admin por usuario sin permisos: $relativePath", Logger::LEVEL_WARNING);
+                // Retornamos directamente un error 404 para no dar pistas de que la ruta existe
+                return ['view' => '404.php', 'access' => 'public', 'layout' => 'main'];
             }
         }
 
