@@ -10,6 +10,13 @@ export class ProfileController {
 
     init() {
         document.body.addEventListener('click', (e) => {
+            // --- MANEJO DE ELIMINAR CUENTA ---
+            if (e.target.closest('[data-action="delete-account-submit"]')) {
+                e.preventDefault();
+                this.handleDeleteAccount(e.target.closest('button'));
+                return;
+            }
+
             // --- MANEJO DE FOTO DE PERFIL ---
             if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
                 e.preventDefault();
@@ -110,6 +117,22 @@ export class ProfileController {
         });
 
         document.body.addEventListener('change', (e) => {
+            // --- MANEJO CHECKBOX ELIMINAR CUENTA ---
+            if (e.target.id === 'confirmDeleteCheckbox') {
+                const passwordArea = document.getElementById('passwordConfirmationArea');
+                const passwordInput = document.getElementById('deleteAccountPassword');
+                if (passwordArea) {
+                    if (e.target.checked) {
+                        passwordArea.classList.replace('disabled', 'active');
+                        if(passwordInput) setTimeout(() => passwordInput.focus(), 50);
+                    } else {
+                        passwordArea.classList.replace('active', 'disabled');
+                        if(passwordInput) passwordInput.value = '';
+                    }
+                }
+                return;
+            }
+
             if (e.target.id === 'upload-avatar') {
                 this.handleFileSelection(e.target);
             }
@@ -129,6 +152,55 @@ export class ProfileController {
             const filterInput = e.target.closest('[data-action="filter-options"]');
             if (filterInput) this.handleFilter(filterInput);
         });
+    }
+
+    // ==========================================
+    // MÉTODO: ELIMINAR CUENTA
+    // ==========================================
+    async handleDeleteAccount(btn) {
+        const passwordInput = document.getElementById('deleteAccountPassword');
+        const password = passwordInput ? passwordInput.value.trim() : '';
+
+        if (!password) {
+            Toast.show('Ingresa tu contraseña para continuar.', 'error');
+            return;
+        }
+
+        const confirmDialog = confirm("¿Estás absolutamente seguro? Esta acción eliminará todo de inmediato y no se puede deshacer.");
+        
+        if (confirmDialog) {
+            const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="component-spinner-button"></div>';
+            btn.style.opacity = '0.8';
+
+            try {
+                // Fetch a la ruta configurada en api-routes.js
+                const res = await ApiService.post(API_ROUTES.SETTINGS.DELETE_ACCOUNT, {
+                    csrf_token: csrfToken,
+                    password: password
+                });
+
+                if (res.success) {
+                    Toast.show(res.message || 'Cuenta eliminada exitosamente.', 'success');
+                    // Redirigir al usuario al login tras un instante
+                    setTimeout(() => {
+                        window.location.href = '/ProjectAurora/login';
+                    }, 1500);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    btn.style.opacity = '1';
+                    Toast.show(window.t ? window.t(res.message) || res.message : res.message, 'error');
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.style.opacity = '1';
+                Toast.show('Error de conexión.', 'error');
+            }
+        }
     }
 
     // ==========================================
