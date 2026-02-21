@@ -1,12 +1,10 @@
-// public/assets/js/main-controller.js
+// public/assets/js/core/main-controller.js
 
 export class MainController {
     constructor() {
-        // --- CONFIGURACIÓN ---
         this.allowMultipleModules = false; 
         this.closeOnEsc = true;
         
-        // --- ESTADO DEL GESTO ---
         this.dragState = {
             startY: 0,
             currentY: 0,
@@ -30,7 +28,6 @@ export class MainController {
         this.handleScrollShadow();
         this.handleModules();
 
-        // Parche: Vuelve a vincular los eventos táctiles cuando el Router SPA cambia la vista
         window.addEventListener('viewLoaded', () => {
             this.initBottomSheets();
         });
@@ -40,18 +37,27 @@ export class MainController {
         const triggers = document.querySelectorAll('[data-action^="toggle"]');
 
         triggers.forEach(trigger => {
-            // Ignoramos triggers personalizados como "toggle-dropdown" para que profile-controller los gestione
             if (trigger.dataset.action === 'toggle-dropdown') return; 
 
             trigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const action = trigger.dataset.action;
-                const actionMap = {
-                    'toggleModuleSurface': 'moduleSurface',
-                    'toggleModuleMainOptions': 'moduleMainOptions'
-                };
+                
+                // --- NUEVA LÓGICA DINÁMICA Y ESCALABLE ---
+                let targetModuleName = null;
+                
+                // Si usa el nuevo estándar dinámico (Ej: data-target="moduleMiFiltro")
+                if (action === 'toggleModule' && trigger.dataset.target) {
+                    targetModuleName = trigger.dataset.target;
+                } else {
+                    // Soporte legacy para los menús que ya existen en el header
+                    const actionMap = {
+                        'toggleModuleSurface': 'moduleSurface',
+                        'toggleModuleMainOptions': 'moduleMainOptions'
+                    };
+                    targetModuleName = actionMap[action];
+                }
 
-                const targetModuleName = actionMap[action];
                 if (targetModuleName) {
                     this.toggleModule(targetModuleName);
                 }
@@ -138,7 +144,6 @@ export class MainController {
     }
 
     initBottomSheets() {
-        // Seleccionamos módulos que aún no han sido inicializados para evitar duplicidad en el DOM estático
         const modules = document.querySelectorAll('.component-module--display-overlay:not(.bottom-sheet-initialized)');
 
         modules.forEach(module => {
@@ -164,7 +169,6 @@ export class MainController {
 
     handleDragStart(e, module, panel) {
         if (!this.isMobile) return;
-        
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
         panel.setPointerCapture(e.pointerId);
@@ -178,7 +182,6 @@ export class MainController {
 
     handleDragMove(e) {
         if (!this.dragState.isDragging) return;
-        
         if (e.cancelable) e.preventDefault();
 
         const diff = e.clientY - this.dragState.startY;

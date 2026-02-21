@@ -8,6 +8,7 @@ import { DialogController } from '../components/dialog-controller.js';
 import { TooltipController } from '../components/tooltip-controller.js';
 import { TwoFactorController } from '../controllers/2fa-controller.js'; 
 import { DevicesController } from '../controllers/devices-controller.js';
+import { AdminUsersController } from '../controllers/admin-users-controller.js'; // <-- IMPORTAR NUEVO
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -25,4 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.tooltipController = new TooltipController(); 
     window.twoFactorController = new TwoFactorController(); 
     window.devicesController = new DevicesController();
+    
+    // Inicializar el controlador de Admin
+    window.adminUsersController = new AdminUsersController(); // <-- INSTANCIAR NUEVO
 });
