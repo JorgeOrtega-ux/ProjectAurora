@@ -117,7 +117,7 @@ export class PreferencesController {
             : (document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '');
         if (!csrfToken) return false;
         try {
-            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrfToken: csrfToken });
             if (!res.success) {
                 alert(window.t(res.message));
                 return false;
@@ -177,25 +177,20 @@ export class PreferencesController {
             });
         }
 
-        // Aplicar el tema (inyectar clase en el HTML)
+        // Aplicar el tema modificando el atributo de datos (sincronizado con root.css)
         this.applyThemeMode();
     }
 
     applyThemeMode() {
         const html = document.documentElement;
-        html.classList.remove('dark-theme', 'light-theme');
 
         if (this.prefs.theme === 'dark') {
-            html.classList.add('dark-theme');
+            html.setAttribute('data-theme', 'dark');
         } else if (this.prefs.theme === 'light') {
-            html.classList.add('light-theme');
+            html.setAttribute('data-theme', 'light');
         } else {
-            // "system" o fallback
-            if (this.systemThemeQuery.matches) {
-                html.classList.add('dark-theme');
-            } else {
-                html.classList.add('light-theme');
-            }
+            // "system" o fallback: Eliminar el atributo deja que actúe "prefers-color-scheme"
+            html.removeAttribute('data-theme');
         }
     }
 }

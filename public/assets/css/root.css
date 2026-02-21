@@ -440,10 +440,9 @@
 /* ========================================================================
    3. TEMA OSCURO (DEFINICIÓN DE VARIABLES)
    ======================================================================== */
-/* Se aplica cuando el atributo data-theme es 'dark' O cuando el sistema lo pide y no está forzado a 'light' */
-
+/* Se aplica por OS preference a menos que se fuerce el light mode */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    html:not([data-theme="light"]):not(.light-theme) {
         /* --- Backgrounds --- */
         --bg-app: var(--sl-color-gray-950);     /* #131316 */
         --bg-surface: var(--sl-color-gray-900); /* #19191c */
@@ -458,7 +457,6 @@
         --text-inverse: var(--sl-color-neutral-900); /* Texto negro (para botones claros) */
 
         /* --- Borders --- */
-        /* Solicitud específica: Bordes #ffffff20 (aprox 12% opacidad blanco) */
         --border-color: #ffffff20;
         --border-color-hover: var(--sl-color-gray-400);
         --divider-color: #ffffff20;
@@ -470,7 +468,6 @@
         --overlay-dark: rgba(0, 0, 0, 0.7); /* Overlay más oscuro para diálogos */
 
         /* --- Actions --- */
-        /* En modo oscuro, la acción primaria suele ser blanca o muy clara para contrastar */
         --action-primary: var(--sl-color-neutral-100); 
         --action-primary-hover: var(--sl-color-neutral-300);
         
@@ -484,24 +481,28 @@
         --color-error: var(--sl-color-red-400);
         --color-error-bg: rgba(220, 38, 38, 0.15);
 
-        /* Shadows (Sutiles o nulas en dark mode) */
+        /* Shadows */
         --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     }
 }
 
-[data-theme="dark"] {
-    /* Mismas definiciones que arriba para forzado manual */
+/* Se aplica cuando el modo oscuro es forzado manualmente (acepta clases y atributos) */
+html[data-theme="dark"], 
+html.dark-theme {
+    /* --- Backgrounds --- */
     --bg-app: var(--sl-color-gray-950);
     --bg-surface: var(--sl-color-gray-900);
     --bg-surface-alt: var(--sl-color-gray-800);
     --bg-input: var(--sl-color-gray-950);
     --bg-hover-light: rgba(255, 255, 255, 0.05);
     
+    /* --- Text --- */
     --text-primary: var(--sl-color-neutral-50);
     --text-secondary: var(--sl-color-gray-300);
     --text-tertiary: var(--sl-color-gray-500);
     --text-inverse: var(--sl-color-neutral-900);
 
+    /* --- Borders --- */
     --border-color: #ffffff20;
     --border-color-hover: var(--sl-color-gray-400);
     --divider-color: #ffffff20;
@@ -512,17 +513,20 @@
     
     --overlay-dark: rgba(0, 0, 0, 0.7);
 
+    /* --- Actions --- */
     --action-primary: var(--sl-color-neutral-100);
     --action-primary-hover: var(--sl-color-neutral-300);
     
     --action-danger: var(--sl-color-red-400);
     --action-danger-bg: rgba(220, 38, 38, 0.15);
 
+    /* --- Status --- */
     --color-success: var(--sl-color-green-400);
     --color-success-bg: rgba(22, 163, 74, 0.15);
     
     --color-error: var(--sl-color-red-400);
     --color-error-bg: rgba(220, 38, 38, 0.15);
     
+    /* Shadows */
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }

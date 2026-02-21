@@ -52,7 +52,7 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                 <button type="button" id="btn-back-2" class="component-button component-button--square-40" style="margin-bottom: 16px;">
                     <span class="material-symbols-rounded">arrow_back</span>
                 </button>
-                <div style="text-align: center; margin-bottom: 16px; color: #666; font-size: 14px;">
+                <div style="text-align: center; margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
                     <p><?= t('register.code_msg') ?></p>
                 </div>
                 <div class="component-form-group">

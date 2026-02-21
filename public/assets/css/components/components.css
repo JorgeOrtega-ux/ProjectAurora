@@ -9,8 +9,8 @@
 
 /* --- COMPONENT: BUTTONS --- */
 .component-button {
-    background-color: #ffffff;
-    border: 1px solid #00000020;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     display: inline-flex;
     justify-content: center;
@@ -18,13 +18,13 @@
     cursor: pointer;
     font-size: 14px;
     outline: none;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
     text-decoration: none;
     color: inherit;
 }
 
 .component-button:hover {
-    background-color: #f5f5fa;
+    background-color: var(--bg-hover-light);
 }
 
 /* Modificadores de Tamaño */
@@ -52,14 +52,15 @@
 /* Modificador de Estilo: Negro/Primary */
 .component-button--black,
 .component-button.primary {
-    background-color: #000000;
-    color: #ffffff;
-    border-color: #000000;
+    background-color: var(--action-primary);
+    color: var(--text-inverse);
+    border-color: var(--action-primary);
 }
 
 .component-button--black:hover,
 .component-button.primary:hover {
-    background-color: #333333;
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
     opacity: 0.9;
 }
 
@@ -74,9 +75,9 @@
     width: 425px;
     height: 40px;
     display: flex;
-    border: 1px solid #00000020;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
 }
 
 .component-search-icon {
@@ -85,7 +86,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #000000;
+    color: var(--text-primary);
 }
 
 .component-search-input {
@@ -123,7 +124,7 @@
 .component-module--offset-s { padding: 12px; }
 
 /* PANEL */
-.component-module-panel { width: 100%; height: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px #00000020; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #00000008; }
+.component-module-panel { width: 100%; height: 100%; background-color: var(--bg-surface); border-radius: 12px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-lighter); }
 .component-module-panel--padded { padding: 8px; height: auto; }
 
 /* RESTRICCIÓN DESKTOP PARA OVERLAYS */
@@ -154,11 +155,11 @@
 /* MENU LINK */
 .component-menu-list { width: 100%; display: flex; flex-direction: column; gap: 4px; }
 .component-menu-link { width: 100%; height: 40px; flex-shrink: 0; display: flex; flex-direction: row; border-radius: 8px; background-color: transparent; text-decoration: none; color: inherit; cursor: pointer; transition: background-color 0.2s ease; }
-.component-menu-link:hover, .component-menu-link.active { background-color: #f5f5fa; }
-.component-menu-link.active .component-menu-link-icon { color: #000000; }
-.component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: #000000; }
-.component-menu-link-text { flex: 1 1 auto; display: flex; justify-content: flex-start; align-items: center; font-size: 14px; font-weight: 500; color: #000000; }
-.component-menu-link--bordered { border: 1px solid #00000020; } 
+.component-menu-link:hover, .component-menu-link.active { background-color: var(--bg-hover-light); }
+.component-menu-link.active .component-menu-link-icon { color: var(--text-primary); }
+.component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: var(--text-primary); transition: color 0.2s; }
+.component-menu-link-text { flex: 1 1 auto; display: flex; justify-content: flex-start; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: color 0.2s; }
+.component-menu-link--bordered { border: 1px solid var(--border-color); } 
 
 /* =========================================
    DISEÑO AUTH (MODULAR 8PX)
@@ -172,7 +173,7 @@
 }
 
 .component-card {
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
     border-radius: 16px;
     padding: 32px 24px;
     box-shadow: none; 
@@ -193,12 +194,12 @@
     font-size: 24px;
     font-weight: 700;
     margin-bottom: 8px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .component-header-centered p {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .component-stage-form {
@@ -219,14 +220,14 @@
     position: relative;
     width: 100%;
     height: 52px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     transition: border-color 0.2s ease;
-    background-color: #fff;
+    background-color: var(--bg-input);
 }
 
 .component-input-wrapper:focus-within {
-    border-color: #000;
+    border-color: var(--border-color-hover);
 }
 
 .component-text-input {
@@ -237,7 +238,7 @@
     outline: none;
     padding: 22px 12px 6px 12px;
     font-size: 16px;
-    color: #000;
+    color: var(--text-primary);
     border-radius: 8px;
     z-index: 2;
     position: relative;
@@ -253,7 +254,7 @@
     top: 50%;
     transform: translateY(-50%);
     font-size: 15px;
-    color: #757575;
+    color: var(--text-tertiary);
     pointer-events: none;
     transition: all 0.2s ease;
     z-index: 1;
@@ -264,7 +265,7 @@
     top: 14px;
     font-size: 11px;
     font-weight: 600;
-    color: #000;
+    color: var(--text-primary);
 }
 
 .component-input-action {
@@ -278,7 +279,7 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    color: #757575;
+    color: var(--text-secondary);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -287,13 +288,13 @@
 }
 
 .component-input-action:hover {
-    background-color: #f5f5fa;
-    color: #000;
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
 }
 
 .component-link-simple {
     font-size: 13px;
-    color: #666;
+    color: var(--text-secondary);
     text-decoration: none;
     text-align: right;
     width: 100%;
@@ -302,18 +303,18 @@
 }
 
 .component-link-simple:hover {
-    color: #000;
+    color: var(--text-primary);
     text-decoration: underline;
 }
 
 .component-text-footer {
     text-align: center;
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .component-text-footer a {
-    color: #000;
+    color: var(--text-primary);
     font-weight: 600;
     text-decoration: none;
 }
@@ -327,8 +328,8 @@
     padding: 12px;
     margin-top: 8px;
     background-color: transparent;
-    border: 1px solid #dc2626;
-    color: #dc2626;
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
@@ -340,17 +341,18 @@
 .component-spinner-button {
     width: 20px;
     height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.3); /* Utilizado en botones oscuros */
+    border-top-color: var(--text-inverse);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     display: inline-block;
 }
 
+/* Spinner inverso para botones claros o de Outline */
 .component-button:not(.component-button--black):not(.primary) .component-spinner-button,
 .component-spinner-button.dark-spinner {
-    border-color: rgba(0, 0, 0, 0.1);
-    border-top-color: #000000;
+    border-color: var(--border-light);
+    border-top-color: var(--action-primary);
 }
 
 @keyframes fadeIn {
@@ -375,7 +377,7 @@
     .component-module--display-overlay {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
         display: flex; width: 100%; height: 100%; align-items: flex-end;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: var(--overlay-dark);
         transition: display 0.3s allow-discrete, background-color 0.3s ease;
     }
     
@@ -400,7 +402,7 @@
         padding: 12px 0; 
         cursor: grab;
         touch-action: none; 
-        background-color: #ffffff; 
+        background-color: var(--bg-surface); 
         z-index: 10;
     }
 
@@ -414,10 +416,10 @@
 /* User Avatar Roles */
 .user-avatar-btn { position: relative; border-radius: 50%; overflow: visible !important; transition: transform 0.2s ease; }
 .user-avatar-btn::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border-radius: 50%; border: 2px solid transparent; z-index: 1; pointer-events: none; transition: border-color 0.3s ease; }
-.user-avatar-btn img { border: 2px solid #ffffff; display: block; box-sizing: border-box; border-radius: 50%; }
-.user-avatar-btn[data-role="user"]::before { border-color: #eeeeee; }
-.user-avatar-btn[data-role="moderator"]::before { border-color: #2196f3; }
-.user-avatar-btn[data-role="administrator"]::before { border-color: #f44336; }
+.user-avatar-btn img { border: 2px solid var(--bg-surface); display: block; box-sizing: border-box; border-radius: 50%; }
+.user-avatar-btn[data-role="user"]::before { border-color: var(--role-user-border); }
+.user-avatar-btn[data-role="moderator"]::before { border-color: var(--role-moderator); }
+.user-avatar-btn[data-role="administrator"]::before { border-color: var(--role-administrator); }
 
 /* BORDE MULTICOLOR PARA FOUNDER (Google/Microsoft Style) */
 .user-avatar-btn[data-role="founder"]::before,
@@ -439,8 +441,8 @@
 .component-text-input:-webkit-autofill:hover, 
 .component-text-input:-webkit-autofill:focus, 
 .component-text-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px white inset !important;
-    -webkit-text-fill-color: #000 !important;
+    -webkit-box-shadow: 0 0 0 30px var(--bg-input) inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
     transition: background-color 5000s ease-in-out 0s;
     z-index: 2;
 }
@@ -449,7 +451,7 @@
     top: 14px;
     font-size: 11px;
     font-weight: 600;
-    color: #000;
+    color: var(--text-primary);
     z-index: 3;
 }
 
@@ -475,7 +477,7 @@
     font-size: 24px;
     font-weight: 500;
     margin-bottom: 20px;
-    color: #000;
+    color: var(--text-primary);
     text-align: center;
 }
 
@@ -494,22 +496,22 @@
 
 .component-header-card {
     text-align: center;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 24px;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
 }
 
 .component-page-title {
     font-size: 24px;
     font-weight: 700;
     margin: 0 0 8px 0;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .component-page-description {
     font-size: 15px;
-    color: #666666;
+    color: var(--text-secondary);
     margin: 0;
 }
 
@@ -518,9 +520,9 @@
     flex-direction: column;
     padding: 0;
     gap: 0;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
 }
 
 .component-group-item {
@@ -542,7 +544,7 @@
 
 .component-divider {
     border: 0;
-    border-top: 1px solid #00000015;
+    border-top: 1px solid var(--divider-color);
     width: 100%;
     margin: 0;
 }
@@ -566,26 +568,26 @@
     font-size: 15px;
     font-weight: 600;
     margin: 0;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .component-card__description {
     font-size: 14px;
-    color: #666666;
+    color: var(--text-secondary);
     margin: 0;
     line-height: 1.4;
 }
 
 .text-display-value {
     font-size: 14px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .component-card__profile-picture {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background-color: #f5f5fa;
+    background-color: var(--bg-surface-alt);
     position: relative;
     display: flex;
     align-items: center;
@@ -607,15 +609,15 @@
 }
 
 .component-card__profile-picture[data-role="user"]::before {
-    border-color: #cccccc;
+    border-color: var(--role-user-border);
 }
 
 .component-card__profile-picture[data-role="moderator"]::before {
-    border-color: #2196f3;
+    border-color: var(--role-moderator);
 }
 
 .component-card__profile-picture[data-role="administrator"]::before {
-    border-color: #f44336;
+    border-color: var(--role-administrator);
 }
 
 .component-card__avatar-image {
@@ -628,11 +630,11 @@
 .component-card__avatar-overlay {
     position: absolute;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: var(--overlay-dark);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: #fff; /* Icono siempre blanco */
     opacity: 0;
     cursor: pointer;
     border-radius: 50%;
@@ -687,10 +689,10 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #f5f5fa;
+    background-color: var(--bg-hover-light);
     border-radius: 34px;
     transition: .3s;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
 }
 
 .component-toggle-slider:before {
@@ -700,19 +702,19 @@
     width: 18px;
     left: 2px;
     bottom: 2px;
-    background-color: #1a1a1a;
+    background-color: var(--text-primary);
     border-radius: 50%;
     transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 input:checked + .component-toggle-slider {
-    background-color: #000000;
-    border-color: #000000;
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
 }
 
 input:checked + .component-toggle-slider:before {
     transform: translateX(20px);
-    background-color: #ffffff;
+    background-color: var(--text-inverse);
 }
 
 /* =========================================
@@ -731,19 +733,19 @@ input:checked + .component-toggle-slider:before {
     width: 100%;
     height: 40px;
     padding: 0 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
     cursor: pointer;
     user-select: none;
     gap: 8px;
     transition: border-color 0.2s ease, background-color 0.2s ease;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .component-dropdown-trigger:hover {
-    border-color: #000000;
-    background-color: #f5f5fa;
+    border-color: var(--border-color-hover);
+    background-color: var(--bg-hover-light);
 }
 
 .component-dropdown-text {
@@ -765,9 +767,9 @@ input:checked + .component-toggle-slider:before {
 /* Cabecera de búsqueda con border-bottom independiente del padding del listado */
 .component-module-panel-header--search {
     padding: 8px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
 }
 
 /* Altura máxima para que el dropdown haga scroll */
@@ -844,10 +846,10 @@ input:checked + .component-toggle-slider:before {
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-left: 4px solid #000;
+    box-shadow: var(--shadow-card);
+    border-left: 4px solid var(--text-primary);
     transform: translateX(-120%);
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
@@ -862,25 +864,25 @@ input:checked + .component-toggle-slider:before {
 }
 
 .component-toast--success {
-    border-left-color: #16a34a;
+    border-left-color: var(--color-success);
 }
 
 .component-toast--success .material-symbols-rounded {
-    color: #16a34a;
+    color: var(--color-success);
 }
 
 .component-toast--error {
-    border-left-color: #dc2626;
+    border-left-color: var(--color-error);
 }
 
 .component-toast--error .material-symbols-rounded {
-    color: #dc2626;
+    color: var(--color-error);
 }
 
 .component-toast-message {
     font-size: 14px;
     font-weight: 500;
-    color: #1a1a1a;
+    color: var(--text-primary);
     line-height: 1.4;
 }
 
@@ -908,7 +910,7 @@ input:checked + .component-toggle-slider:before {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--overlay-dark);
     z-index: 9999;
     display: flex;
     justify-content: center;
@@ -924,12 +926,12 @@ input:checked + .component-toggle-slider:before {
 }
 
 .component-dialog-box {
-    background-color: #ffffff;
+    background-color: var(--bg-surface);
     border-radius: 12px;
     width: 100%;
     max-width: 400px;
     padding: 24px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-card);
     transform: translateY(20px) scale(0.95);
     transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     display: flex;
@@ -951,7 +953,7 @@ input:checked + .component-toggle-slider:before {
 .component-dialog-title {
     font-size: 18px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -959,7 +961,7 @@ input:checked + .component-toggle-slider:before {
     background: none;
     border: none;
     cursor: pointer;
-    color: #666;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -969,13 +971,13 @@ input:checked + .component-toggle-slider:before {
 }
 
 .component-dialog-close:hover {
-    background-color: #f5f5fa;
-    color: #000;
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
 }
 
 .component-dialog-body {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     line-height: 1.5;
 }
 
@@ -997,8 +999,8 @@ input:checked + .component-toggle-slider:before {
 .aurora-tooltip {
     /* Absolute garantiza que no altere el DOM ni parpadee antes de que Popper cargue */
     position: absolute; 
-    background-color: #1a1a1a; 
-    color: #ffffff; 
+    background-color: var(--text-primary); 
+    color: var(--text-inverse); 
     padding: 6px 12px;
     font-size: 12px;
     font-weight: 600;
@@ -1007,7 +1009,7 @@ input:checked + .component-toggle-slider:before {
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-card);
     transition: opacity 0.2s ease, visibility 0.2s;
     z-index: 9999;
 }
@@ -1058,8 +1060,8 @@ input:checked + .component-toggle-slider:before {
     border-radius: 8px;
     margin-bottom: 8px;
     overflow: hidden;
-    background: #ffffff;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
 }
 .component-accordion-header {
     cursor: pointer;
@@ -1089,7 +1091,7 @@ input:checked + .component-toggle-slider:before {
 }
 .component-accordion-chevron {
     transition: transform 0.3s ease;
-    color: #666;
+    color: var(--text-secondary);
 }
 .component-visual-group {
     display: flex;
@@ -1105,13 +1107,13 @@ input:checked + .component-toggle-slider:before {
 .box-qr {
     width: 150px;
     height: 150px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 8px;
-    background: #fff;
+    background: #fff; /* Fijo para que el código QR sea siempre escaneable (alto contraste) */
     flex-shrink: 0;
 }
 .component-step-list {
@@ -1127,15 +1129,15 @@ input:checked + .component-toggle-slider:before {
     align-items: center;
     gap: 12px;
     font-size: 15px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 .component-step-icon {
     width: 28px;
     height: 28px;
     border-radius: 50%;
     background: transparent;
-    color: #1a1a1a;
-    border: 1px solid #00000020;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1151,14 +1153,14 @@ input:checked + .component-toggle-slider:before {
 }
 .component-chip {
     padding: 10px;
-    background: #f5f5fa;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     text-align: center;
     font-family: monospace;
     font-size: 14px;
     letter-spacing: 1px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 .component-card__icon-container {
     display: flex;
@@ -1170,11 +1172,11 @@ input:checked + .component-toggle-slider:before {
     flex-shrink: 0;
 }
 .component-card__icon-container--bordered {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     background-color: transparent;
 }
 .component-card__icon-container span {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 22px;
 }
 .mt-16 { margin-top: 16px !important; }

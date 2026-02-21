@@ -26,7 +26,7 @@ if (isset($_SESSION['user_id'])) {
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__icon-container component-card__icon-container--bordered">
-                            <span class="material-symbols-rounded" style="color: #16a34a;">verified_user</span>
+                            <span class="material-symbols-rounded" style="color: var(--color-success);">verified_user</span>
                         </div>
                         <div class="component-card__text">
                             <h2 class="component-card__title">Tu cuenta está protegida</h2>
@@ -35,7 +35,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                     
                     <div class="component-card__actions actions-right w-100" style="justify-content: flex-end;">
-                        <button type="button" class="component-button" id="btn-disable-2fa" style="color: #d32f2f; border-color: rgba(211, 47, 47, 0.3);">
+                        <button type="button" class="component-button" id="btn-disable-2fa" style="color: var(--action-danger); border-color: var(--action-danger);">
                             Desactivar 2FA
                         </button>
                     </div>
@@ -52,7 +52,7 @@ if (isset($_SESSION['user_id'])) {
                             <h2 class="component-card__title">Códigos de recuperación</h2>
                             <p class="component-card__description">
                                 Estos códigos te permiten recuperar tu cuenta si pierdes acceso a tu dispositivo.<br>
-                                <span style="font-weight: 500; color: #1a1a1a;">
+                                <span style="font-weight: 500; color: var(--text-primary);">
                                     Códigos restantes: <span id="recovery-count-display">...</span>
                                 </span>
                             </p>
@@ -90,7 +90,7 @@ if (isset($_SESSION['user_id'])) {
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content w-100">
                             <div class="component-card__text w-100">
-                                <h2 class="component-card__title" style="color: #16a34a;">Nuevos códigos generados</h2>
+                                <h2 class="component-card__title" style="color: var(--color-success);">Nuevos códigos generados</h2>
                                 <p class="component-card__description">Guarda estos códigos en un lugar seguro. Tus códigos anteriores ya no son válidos.</p>
                             </div>
                         </div>
@@ -103,7 +103,7 @@ if (isset($_SESSION['user_id'])) {
 
             <div id="step-qr-container" class="w-100" style="display: flex; flex-direction: column; gap: 16px;">
                 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="1" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="1" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -135,7 +135,7 @@ if (isset($_SESSION['user_id'])) {
                                 </div>
                                 <div class="component-visual-box box-qr">
                                     <div id="qr-container" style="width: 100%; height: 100%;">
-                                         <div class="component-spinner-button" style="border-color: #000; border-left-color: transparent;"></div>
+                                         <div class="component-spinner-button dark-spinner"></div>
                                     </div>
                                 </div>
                             </div>
@@ -143,7 +143,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="2" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="2" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -179,7 +179,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="3" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="3" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
                     <div class="component-group-item component-accordion-header" style="cursor: default;">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -216,11 +216,11 @@ if (isset($_SESSION['user_id'])) {
                 <div class="component-group-item component-group-item--stacked">
                     
                     <div class="component-card__content">
-                        <div class="component-card__icon-container component-card__icon-container--bordered" style="background-color: #f0fdf4; border-color: #16a34a;">
-                            <span class="material-symbols-rounded" style="color: #16a34a;">check</span>
+                        <div class="component-card__icon-container component-card__icon-container--bordered" style="background-color: var(--color-success-bg); border-color: var(--color-success);">
+                            <span class="material-symbols-rounded" style="color: var(--color-success);">check</span>
                         </div>
                         <div class="component-card__text">
-                            <h2 class="component-card__title" style="color: #16a34a;">¡2FA Activado!</h2>
+                            <h2 class="component-card__title" style="color: var(--color-success);">¡2FA Activado!</h2>
                             <p class="component-card__description">Tu cuenta ahora está protegida. A continuación, guarda tus códigos de recuperación de emergencia.</p>
                         </div>
                     </div>

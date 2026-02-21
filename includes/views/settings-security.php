@@ -12,8 +12,8 @@
             <div class="component-group-item" data-component="password-update-section" style="flex-direction: column; align-items: flex-start;">
                 
                 <div class="component-card__content" style="width: 100%;">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid #e0e0e0; background-color: #fcfcfc; flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: #666; font-size: 20px;">lock</span>
+                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">lock</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.pass_title') ?></h2>
@@ -69,8 +69,8 @@
 
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid #e0e0e0; background-color: #fcfcfc; flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: #666; font-size: 20px;">shield</span>
+                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">shield</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.2fa_title') ?></h2>
@@ -90,8 +90,8 @@
         <div class="component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid #e0e0e0; background-color: #fcfcfc; flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: #666; font-size: 20px;">devices</span>
+                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">devices</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.devices_title') ?></h2>
@@ -111,13 +111,13 @@
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" style="color: #d32f2f;"><?= t('settings.security.delete_title') ?></h2>
+                        <h2 class="component-card__title" style="color: var(--action-danger);"><?= t('settings.security.delete_title') ?></h2>
                         <p class="component-card__description"><?= t('settings.security.delete_desc') ?></p>
                     </div>
                 </div>
 
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" style="color: #d32f2f; border-color: rgba(211, 47, 47, 0.3);" data-nav="/ProjectAurora/settings/delete-account">
+                    <button type="button" class="component-button" style="color: var(--action-danger); border-color: var(--action-danger);" data-nav="/ProjectAurora/settings/delete-account">
                         <?= t('settings.security.delete_btn') ?>
                     </button>
                 </div>

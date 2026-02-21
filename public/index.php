@@ -30,6 +30,7 @@ if ($isSpaRequest) {
     <base href="/ProjectAurora/"> 
     <link rel="stylesheet" type="text/css" href="assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="assets/css/components/components.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/root.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <title>Project Aurora</title>
 </head>

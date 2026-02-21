@@ -26,7 +26,7 @@ $settingsMenuDisplay = $isSettings ? 'flex' : 'none';
                         <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('surface.back') ?></span></div>
                     </div>
                     
-                    <div style="height: 1px; background-color: #00000020; margin: 4px 0; flex-shrink: 0;"></div>
+                    <div style="height: 1px; background-color: var(--divider-color); margin: 4px 0; flex-shrink: 0;"></div>
 
                     <?php if ($isLoggedIn): ?>
                         <div class="component-menu-link nav-item" data-nav="/ProjectAurora/settings/your-account">

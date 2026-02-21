@@ -42,7 +42,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 </button>
 
                 <div id="reset-error" class="component-message-error"></div>
-                <div id="reset-success" style="display: none; color: #16a34a; font-weight: 500; text-align: center; margin-top: 16px; padding: 12px; background: #f0fdf4; border: 1px solid #16a34a; border-radius: 8px;">
+                <div id="reset-success" style="display: none; color: var(--color-success); font-weight: 500; text-align: center; margin-top: 16px; padding: 12px; background: var(--color-success-bg); border: 1px solid var(--color-success); border-radius: 8px;">
                     <?= t('reset.success') ?>
                 </div>
             </div>

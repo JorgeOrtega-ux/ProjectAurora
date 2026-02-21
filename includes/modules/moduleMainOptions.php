@@ -16,7 +16,7 @@ $userRoleOption = $isLoggedInOption && isset($_SESSION['user_role']) ? $_SESSION
                     <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('module.admin') ?></span></div>
                 </a>
                 
-                <div style="height: 1px; background-color: #00000020; margin: 4px 0; flex-shrink: 0;"></div>
+                <div style="height: 1px; background-color: var(--divider-color); margin: 4px 0; flex-shrink: 0;"></div>
                 <?php endif; ?>
 
                 <a href="<?= $settingsRoute; ?>" class="component-menu-link nav-item" data-nav="<?= $settingsRoute; ?>">
