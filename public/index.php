@@ -46,7 +46,7 @@ if (isset($_COOKIE['aurora_prefs'])) {
     <link rel="stylesheet" type="text/css" href="assets/css/root.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     
-    <title>Project Aurora</title>
+<title><?= htmlspecialchars(getenv('APP_NAME') ?: 'Project Aurora') ?></title>
 
     <script>
         (function() {
