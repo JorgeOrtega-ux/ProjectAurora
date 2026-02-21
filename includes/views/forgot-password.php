@@ -7,6 +7,13 @@
                 <p id="auth-subtitle"><?= t('forgot.subtitle') ?></p>
             </div>
 
+            <div style="position: absolute; left: -9999px; top: -9999px;" aria-hidden="true">
+                <label for="hp-forgot">Deje este campo en blanco</label>
+                <input type="text" id="hp-forgot" name="hp-forgot" tabindex="-1" autocomplete="off">
+            </div>
+            
+            <div id="turnstile-box-forgot"></div>
+
             <div id="form-forgot-password" class="component-stage-form">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 

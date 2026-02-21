@@ -365,5 +365,39 @@ class Utils {
             Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
         }
     }
+
+    // ==========================================
+    // VALIDACIÓN CLOUDFLARE TURNSTILE
+    // ==========================================
+
+    public static function verifyTurnstile($token, $ip) {
+        $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
+        
+        // Bypass si no está configurado (útil para entorno local de desarrollo)
+        if (empty($secret)) return true; 
+        
+        // Si hay una secret key configurada pero el token viene vacío, es un fallo
+        if (empty($token)) return false;
+
+        $data = [
+            'secret' => $secret,
+            'response' => $token,
+            'remoteip' => $ip
+        ];
+
+        $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        if ($response) {
+            $result = json_decode($response, true);
+            return isset($result['success']) && $result['success'] === true;
+        }
+        return false;
+    }
 }
 ?>

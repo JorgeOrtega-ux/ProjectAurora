@@ -14,12 +14,27 @@ return function($dbConnection, $action) {
     // Obtener datos del cuerpo de la petición (JSON) usando Utils
     $data = Utils::getJsonInput();
 
+    // --- TRAMPA HONEYPOT ---
+    // Si el bot rellenó el campo oculto hp_field, bloqueamos la ejecución simulando un éxito.
+    if (isset($data->hp_field) && !empty($data->hp_field)) {
+        Logger::system("Bot detectado vía honeypot en auth-handler para la acción: $action", Logger::LEVEL_WARNING);
+        Utils::sendResponse(['success' => true, 'message' => 'Procesando...']);
+    }
+
     // --- VALIDACIÓN CSRF USANDO UTILS ---
     if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password', 'verify_2fa'])) {
         // Si el token no es válido, se bloquea la petición
         if (!Utils::validateCSRF($data->csrf_token ?? '')) {
             Logger::system("Fallo de validación CSRF en auth-handler para la acción: $action", Logger::LEVEL_WARNING);
             Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
+        }
+    }
+
+    // --- VALIDACIÓN CLOUDFLARE TURNSTILE ---
+    if (in_array($action, ['check_email', 'send_code', 'register', 'login', 'forgot_password', 'reset_password'])) {
+        if (!Utils::verifyTurnstile($data->cf_token ?? '', Utils::getClientIP())) {
+            Logger::system("Fallo de validación Turnstile en auth-handler para la acción: $action", Logger::LEVEL_WARNING);
+            Utils::sendResponse(['success' => false, 'message' => 'Verificación de seguridad fallida. Por favor, intenta de nuevo.']);
         }
     }
     // -----------------------

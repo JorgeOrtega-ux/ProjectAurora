@@ -32,6 +32,9 @@ if ($isSpaRequest) {
     <link rel="stylesheet" type="text/css" href="assets/css/components/components.css">
     <link rel="stylesheet" type="text/css" href="assets/css/root.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+    
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad" async defer></script>
+    
     <title>Project Aurora</title>
 </head>
 <body class="<?= $bodyClass; ?>">
@@ -62,6 +65,12 @@ if ($isSpaRequest) {
     <script>
         // Entregamos tanto el lenguaje como las configuraciones globales del servidor al JS
         window.i18n = <?= json_encode(empty($translations) ? new stdClass() : $translations) ?>;
+        
+        <?php 
+            // Inyectamos la llave del sitio de Turnstile
+            if(!isset($APP_CONFIG)) $APP_CONFIG = [];
+            $APP_CONFIG['turnstile_site_key'] = $_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: '';
+        ?>
         window.APP_CONFIG = <?= json_encode($APP_CONFIG ?? new stdClass()) ?>;
         
         window.t = function(key, replacements = null) { 
@@ -72,7 +81,6 @@ if ($isSpaRequest) {
             
             if (data && typeof data === 'object') {
                 for (const prop in data) {
-                    // split/join previene errores que pueden ocurrir con RegEx al encontrar strings con caracteres raros
                     text = text.split('{' + prop + '}').join(data[prop]);
                 }
             }

@@ -16,6 +16,13 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 <div id="reset-fatal-error-code" class="component-json-error-box"></div>
             </div>
 
+            <div style="position: absolute; left: -9999px; top: -9999px;" aria-hidden="true">
+                <label for="hp-reset">Deje este campo en blanco</label>
+                <input type="text" id="hp-reset" name="hp-reset" tabindex="-1" autocomplete="off">
+            </div>
+            
+            <div id="turnstile-box-reset"></div>
+
             <div id="form-reset-password" class="component-stage-form" style="<?php echo $initialStyle; ?>">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 

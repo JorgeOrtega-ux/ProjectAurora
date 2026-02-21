@@ -5,12 +5,62 @@ import { Toast } from './toast-controller.js';
 export class AuthController {
     constructor(router) {
         this.router = router;
+        this.turnstileReady = false;
+        this.currentTurnstileId = undefined;
+
+        // Listener para la carga del script externo de Turnstile
+        window.onTurnstileLoad = () => {
+            this.turnstileReady = true;
+            this.renderCurrentViewTurnstile();
+        };
+
         this.init();
         
         this.checkLoginStage(window.location.pathname);
         this.checkRegisterStage(window.location.pathname);
         this.checkResetPasswordStage(window.location.pathname);
+        this.checkForgotPasswordStage(window.location.pathname);
     }
+
+    // --- MÉTODOS TURNSTILE ---
+
+    renderTurnstile(containerId) {
+        if (!window.turnstile) return;
+        const box = document.getElementById(containerId);
+        if (box) {
+            if (this.currentTurnstileId !== undefined) {
+                try { turnstile.remove(this.currentTurnstileId); } catch(e){}
+            }
+            const siteKey = window.APP_CONFIG?.turnstile_site_key || '1x00000000000000000000AA';
+            this.currentTurnstileId = turnstile.render(`#${containerId}`, {
+                sitekey: siteKey,
+                size: 'invisible'
+            });
+        }
+    }
+
+    renderCurrentViewTurnstile() {
+        if (!this.turnstileReady) return;
+        const url = window.location.pathname;
+        if (url.includes('/login')) this.renderTurnstile('turnstile-box-login');
+        else if (url.includes('/register')) this.renderTurnstile('turnstile-box-register');
+        else if (url.includes('/forgot-password')) this.renderTurnstile('turnstile-box-forgot');
+        else if (url.includes('/reset-password')) this.renderTurnstile('turnstile-box-reset');
+    }
+
+    getTurnstileToken() {
+        return window.turnstile && this.currentTurnstileId !== undefined 
+            ? turnstile.getResponse(this.currentTurnstileId) 
+            : '';
+    }
+
+    resetTurnstile() {
+        if (window.turnstile && this.currentTurnstileId !== undefined) {
+            turnstile.reset(this.currentTurnstileId);
+        }
+    }
+
+    // --- FIN MÉTODOS TURNSTILE ---
 
     init() {
         document.body.addEventListener('keydown', (e) => {
@@ -61,45 +111,35 @@ export class AuthController {
             this.checkLoginStage(e.detail.url);
             this.checkRegisterStage(e.detail.url);
             this.checkResetPasswordStage(e.detail.url);
+            this.checkForgotPasswordStage(e.detail.url);
+            this.renderCurrentViewTurnstile();
         });
     }
 
     showFatalJsonError(containerId, codeId, httpCode, message, type, codeStr, formsToHide = []) {
         const container = document.getElementById(containerId);
         const codeBox = document.getElementById(codeId);
-        
         if (!container || !codeBox) return;
-
-        formsToHide.forEach(form => {
-            if (form) form.style.display = 'none';
-        });
+        formsToHide.forEach(form => { if (form) form.style.display = 'none'; });
         const header = document.querySelector('.component-header-centered');
         if (header) header.style.display = 'none';
-
-        const jsonContent = `Route Error (${httpCode} ): {\n  "error": {\n    "message": "${message}",\n    "type": "${type}",\n    "param": null,\n    "code": "${codeStr}"\n  }\n}`;
+        const jsonContent = `Route Error (${httpCode}): {\n  "error": {\n    "message": "${message}",\n    "type": "${type}",\n    "param": null,\n    "code": "${codeStr}"\n  }\n}`;
         codeBox.textContent = jsonContent;
         container.style.display = 'flex';
     }
 
     checkLoginStage(url) {
         if (!url.includes('/ProjectAurora/login')) return;
-        
         const stage1 = document.getElementById('form-login');
         const stage2 = document.getElementById('form-login-2fa');
         if (!stage1 || !stage2) return;
-
         const title = document.getElementById('auth-title');
         const subtitle = document.getElementById('auth-subtitle');
-
-        stage1.style.display = 'none';
-        stage2.style.display = 'none';
+        stage1.style.display = 'none'; stage2.style.display = 'none';
 
         if (url.endsWith('/login/verification-2fa')) {
             const tempToken = sessionStorage.getItem('temp_2fa_token');
-            if (!tempToken) {
-                this.router.navigate('/ProjectAurora/login');
-                return;
-            }
+            if (!tempToken) { this.router.navigate('/ProjectAurora/login'); return; }
             stage2.style.display = 'flex';
             if (title) { title.textContent = 'Autenticación 2FA'; subtitle.textContent = 'Protección en dos pasos habilitada'; }
             setTimeout(() => document.getElementById('login-2fa-code').focus(), 50);
@@ -111,13 +151,11 @@ export class AuthController {
 
     checkRegisterStage(url) {
         if (!url.includes('/ProjectAurora/register')) return;
-
         const stage1 = document.getElementById('form-register-1');
         const stage2 = document.getElementById('form-register-2');
         const stage3 = document.getElementById('form-register-3');
         const header = document.querySelector('.component-header-centered');
         const fatalContainer = document.getElementById('register-fatal-error');
-
         if (!stage1 || !stage2 || !stage3) return;
 
         if (header) header.style.display = 'block';
@@ -131,31 +169,19 @@ export class AuthController {
         if (document.getElementById('reg-password')) document.getElementById('reg-password').value = pass;
         if (document.getElementById('reg-username')) document.getElementById('reg-username').value = user;
 
-        stage1.style.display = 'none';
-        stage2.style.display = 'none';
-        stage3.style.display = 'none';
-
-        const title = document.getElementById('auth-title');
-        const subtitle = document.getElementById('auth-subtitle');
+        stage1.style.display = 'none'; stage2.style.display = 'none'; stage3.style.display = 'none';
+        const title = document.getElementById('auth-title'); const subtitle = document.getElementById('auth-subtitle');
 
         if (url.endsWith('/register/aditional-data')) {
-            if (!email) { 
-                this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
-                return; 
-            }
+            if (!email) { this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]); return; }
             stage2.style.display = 'flex';
             if (title) { title.textContent = window.t('js.auth.stage2.title'); subtitle.textContent = window.t('js.auth.stage2.sub'); }
             setTimeout(() => document.getElementById('reg-username').focus(), 50);
-
         } else if (url.endsWith('/register/verification-account')) {
-            if (!email || !user) { 
-                this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
-                return; 
-            }
+            if (!email || !user) { this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]); return; }
             stage3.style.display = 'flex';
             if (title) { title.textContent = window.t('js.auth.stage3.title'); subtitle.textContent = window.t('js.auth.stage3.sub'); }
             setTimeout(() => document.getElementById('reg-code').focus(), 50);
-
         } else {
             stage1.style.display = 'flex';
             if (title) { title.textContent = window.t('js.auth.stage1.title'); subtitle.textContent = window.t('js.auth.stage1.sub'); }
@@ -164,19 +190,19 @@ export class AuthController {
 
     checkResetPasswordStage(url) {
         if (!url.includes('/ProjectAurora/reset-password')) return;
-        
         const token = new URLSearchParams(window.location.search).get('token');
         const form = document.getElementById('form-reset-password');
         const header = document.querySelector('.component-header-centered');
         const fatalContainer = document.getElementById('reset-fatal-error');
-        
         if (fatalContainer) fatalContainer.style.display = 'none';
         if (header) header.style.display = 'block';
         if (form) form.style.display = 'flex';
+        if (!token) { this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid or missing token.', 'invalid_request_error', 'invalid_state', [form]); }
+    }
 
-        if (!token) {
-            this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid or missing token. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
-        }
+    checkForgotPasswordStage(url) {
+        if (!url.includes('/ProjectAurora/forgot-password')) return;
+        // Solo para hookear lógica adicional si es necesario
     }
 
     async handleRegisterStage1() {
@@ -184,7 +210,10 @@ export class AuthController {
         const passwordInput = document.getElementById('reg-password');
         const errorDiv = document.getElementById('register-error-1');
         const btn = document.getElementById('btn-next-1');
+        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
+        const cf_token = this.getTurnstileToken();
 
         if (!emailInput.value || !passwordInput.value) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
 
@@ -192,86 +221,90 @@ export class AuthController {
         const pass = passwordInput.value;
         const emailParts = email.split('@');
         
-        if (emailParts.length !== 2 || email.length > 254) { 
-            this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
-            return; 
-        }
+        if (emailParts.length !== 2 || email.length > 254) { this.showError(errorDiv, window.t('js.auth.err_email_invalid')); return; }
 
-        const localPart = emailParts[0];
-        const domainPart = emailParts[1].toLowerCase();
-        
+        const localPart = emailParts[0]; const domainPart = emailParts[1].toLowerCase();
         const minLocal = parseInt(window.APP_CONFIG?.min_email_local_length || 4);
         const maxLocal = parseInt(window.APP_CONFIG?.max_email_local_length || 64);
         const domainsStr = window.APP_CONFIG?.allowed_email_domains || 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com';
         const allowedDomains = domainsStr.split(',').map(d => d.trim().toLowerCase());
 
         if (localPart.length < minLocal || localPart.length > maxLocal || !allowedDomains.includes(domainPart)) {
-            this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
-            return;
+            this.showError(errorDiv, window.t('js.auth.err_email_invalid')); return;
         }
 
         const minPass = parseInt(window.APP_CONFIG?.min_password_length || 12);
         const maxPass = parseInt(window.APP_CONFIG?.max_password_length || 64);
 
         if (pass.length < minPass || pass.length > maxPass) {
-            this.showError(errorDiv, window.t('js.auth.err_pass_length')); 
-            return;
+            this.showError(errorDiv, window.t('js.auth.err_pass_length')); return;
         }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email: email, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email, csrf_token: csrfToken, hp_field, cf_token });
+            this.resetTurnstile(); // El token fue utilizado, reseteamos para siguientes etapas
+
             if (res.success) {
                 sessionStorage.setItem('reg_email', email);
                 sessionStorage.setItem('reg_password', pass);
                 this.router.navigate('/ProjectAurora/register/aditional-data'); 
-            } else {
-                this.showError(errorDiv, window.t(res.message));
-            }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); } 
-        finally { this.setLoading(btn, false); }
+            } else { this.showError(errorDiv, window.t(res.message)); }
+        } catch (error) { 
+            this.resetTurnstile();
+            this.showError(errorDiv, window.t('js.auth.err_conn')); 
+        } finally { this.setLoading(btn, false); }
     }
 
     async handleRegisterStage2() {
         const usernameInput = document.getElementById('reg-username');
         const errorDiv = document.getElementById('register-error-2');
         const btn = document.getElementById('btn-next-2');
+        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
+        const cf_token = this.getTurnstileToken();
 
         const email = sessionStorage.getItem('reg_email');
         const password = sessionStorage.getItem('reg_password');
-
         const user = usernameInput.value.trim();
+        
         if (!user) { this.showError(errorDiv, window.t('js.auth.err_user')); return; }
 
         const minUser = parseInt(window.APP_CONFIG?.min_username_length || 3);
         const maxUser = parseInt(window.APP_CONFIG?.max_username_length || 32);
 
         if (user.length < minUser || user.length > maxUser) {
-            this.showError(errorDiv, window.t('js.auth.err_user_length')); 
-            return;
+            this.showError(errorDiv, window.t('js.auth.err_user_length')); return;
         }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken, hp_field, cf_token });
+            this.resetTurnstile(); 
+
             if (res.success) {
                 sessionStorage.setItem('reg_username', user);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_gen_code')); } 
-        finally { this.setLoading(btn, false); }
+        } catch (error) { 
+            this.resetTurnstile();
+            this.showError(errorDiv, window.t('js.auth.err_gen_code')); 
+        } finally { this.setLoading(btn, false); }
     }
 
     async handleRegisterFinal() {
         const code = document.getElementById('reg-code').value;
         const errorDiv = document.getElementById('register-error-3');
         const btn = document.getElementById('btn-register-final');
+        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-register') ? document.getElementById('hp-register').value : '';
+        const cf_token = this.getTurnstileToken();
         const email = sessionStorage.getItem('reg_email');
 
         if (!code || code.length !== 6) { this.showError(errorDiv, window.t('js.auth.err_code')); return; }
@@ -281,31 +314,34 @@ export class AuthController {
 
         let prefsLocal = { language: 'en-us', openLinksNewTab: true };
         const localData = localStorage.getItem('aurora_prefs');
-        if (localData) {
-            try { prefsLocal = JSON.parse(localData); } catch(e){}
-        }
+        if (localData) { try { prefsLocal = JSON.parse(localData); } catch(e){} }
 
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { 
-                email, 
-                code, 
-                csrf_token: csrfToken,
+                email, code, csrf_token: csrfToken, hp_field, cf_token,
                 language: prefsLocal.language,
                 open_links_new_tab: prefsLocal.openLinksNewTab
             });
+            this.resetTurnstile();
 
             if (res.success) {
                 sessionStorage.clear(); 
                 window.location.href = '/ProjectAurora/';
             } else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); }
+        } catch (error) { 
+            this.resetTurnstile();
+            this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); 
+        }
     }
 
     async handleLogin() {
         const btn = document.getElementById('btn-login'); 
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+        
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-login') ? document.getElementById('hp-login').value : '';
+        const cf_token = this.getTurnstileToken();
         const errorDiv = document.getElementById('login-error');
 
         if (!email || !password) {
@@ -317,8 +353,9 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken });
-            
+            const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken, hp_field, cf_token });
+            this.resetTurnstile(); 
+
             if (res.success) {
                 if (res.requires_2fa) {
                     sessionStorage.setItem('temp_2fa_token', res.token);
@@ -331,6 +368,7 @@ export class AuthController {
                 this.setLoading(btn, false); 
             }
         } catch (error) { 
+            this.resetTurnstile();
             this.showError(errorDiv, window.t ? window.t('js.auth.err_conn') : 'Error de conexión'); 
             this.setLoading(btn, false); 
         }
@@ -344,10 +382,7 @@ export class AuthController {
         const errorDiv = document.getElementById('login-2fa-error');
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
 
-        if (!code) { 
-            this.showError(errorDiv, 'Por favor, ingresa el código.'); 
-            return; 
-        }
+        if (!code) { this.showError(errorDiv, 'Por favor, ingresa el código.'); return; }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
@@ -374,42 +409,43 @@ export class AuthController {
         const spinnerContainer = document.createElement('div');
         spinnerContainer.className = 'component-menu-link-icon';
         spinnerContainer.innerHTML = '<div class="component-spinner-button dark-spinner"></div>';
-        
         btn.appendChild(spinnerContainer);
 
         try { 
             await ApiService.post(API_ROUTES.AUTH.LOGOUT); 
-            setTimeout(() => {
-                window.location.href = '/ProjectAurora/login'; 
-            }, 400);
+            setTimeout(() => { window.location.href = '/ProjectAurora/login'; }, 400);
         } catch (error) { 
             console.error(error); 
-            btn.classList.remove('is-loading');
-            spinnerContainer.remove();
+            btn.classList.remove('is-loading'); spinnerContainer.remove();
         }
     }
 
     async handleForgotPassword() {
         const email = document.getElementById('forgot-email').value;
-        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const btn = document.getElementById('btn-forgot-password');
         const errorDiv = document.getElementById('forgot-error');
+        
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-forgot') ? document.getElementById('hp-forgot').value : '';
+        const cf_token = this.getTurnstileToken();
 
-        if (!email) {
-            this.showError(errorDiv, window.t('js.auth.err_fields'));
-            return;
-        }
+        if (!email) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email, csrf_token: csrfToken, hp_field, cf_token });
+            this.resetTurnstile();
+
             if (res.success) {
                 Toast.show(window.t('js.auth.success_forgot') || 'Enlace de recuperación enviado', 'success');
                 document.getElementById('forgot-email').value = '';
             } else { this.showError(errorDiv, window.t(res.message)); }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_process')); } finally { this.setLoading(btn, false); }
+        } catch (error) { 
+            this.resetTurnstile();
+            this.showError(errorDiv, window.t('js.auth.err_process')); 
+        } finally { this.setLoading(btn, false); }
     }
 
     async handleResetPassword() {
@@ -420,14 +456,14 @@ export class AuthController {
         const errorDiv = document.getElementById('reset-error');
         const successDiv = document.getElementById('reset-success');
         const form = document.getElementById('form-reset-password');
+        
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const hp_field = document.getElementById('hp-reset') ? document.getElementById('hp-reset').value : '';
+        const cf_token = this.getTurnstileToken();
 
         this.hideError(errorDiv);
         
-        if (!token) { 
-            this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
-            return; 
-        }
-
+        if (!token) { this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid token.', 'invalid_request_error', 'invalid_state', [form]); return; }
         if (!pass1 || !pass2) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
         if (pass1 !== pass2) { this.showError(errorDiv, window.t('js.auth.err_pass_match')); return; }
         
@@ -440,7 +476,9 @@ export class AuthController {
 
         this.setLoading(btn, true);
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.RESET_PASSWORD, { token, password: pass1, csrf_token: document.getElementById('csrf_token').value });
+            const res = await ApiService.post(API_ROUTES.AUTH.RESET_PASSWORD, { token, password: pass1, csrf_token: csrfToken, hp_field, cf_token });
+            this.resetTurnstile();
+
             if (res.success) {
                 successDiv.style.display = 'block'; btn.style.display = 'none';
                 setTimeout(() => window.location.href = '/ProjectAurora/login', 2000);
@@ -448,7 +486,11 @@ export class AuthController {
                 this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, window.t(res.message), 'invalid_request_error', 'token_expired_or_used', [form]);
                 this.setLoading(btn, false); 
             }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_update')); this.setLoading(btn, false); }
+        } catch (error) { 
+            this.resetTurnstile();
+            this.showError(errorDiv, window.t('js.auth.err_update')); 
+            this.setLoading(btn, false); 
+        }
     }
 
     setLoading(btn, isLoading) {
