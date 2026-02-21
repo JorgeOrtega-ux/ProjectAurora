@@ -30,7 +30,6 @@ class AdminService {
 
     // Obtener los datos actuales del usuario objetivo por su UUID
     private function getTargetUser($targetUuid) {
-        // Modificación importante: Se agregó el campo 'role'
         $stmt = $this->conn->prepare("SELECT id, uuid, username, email, avatar_path, role FROM users WHERE uuid = :uuid LIMIT 1");
         $stmt->execute([':uuid' => $targetUuid]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -104,7 +103,6 @@ class AdminService {
     }
 
     public function updateField($targetUuid, $field, $newValue, $adminId) {
-        // Se agregó 'role' a la lista
         $allowedFields = ['username', 'email', 'role'];
         if (!in_array($field, $allowedFields)) return ['success' => false, 'message' => 'Campo no válido.'];
 
@@ -199,6 +197,121 @@ class AdminService {
         } catch (\Throwable $e) {
             Logger::database("Error DB en AdminService::updatePreference", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Fallo interno al actualizar preferencia.'];
+        }
+    }
+
+    public function updateAccountStatus($targetUuid, $data, $adminId) {
+        $user = $this->getTargetUser($targetUuid);
+        if (!$user) return ['success' => false, 'message' => 'Usuario no encontrado.'];
+        
+        $userId = $user['id'];
+
+        // Prevención de auto-modificación desde el panel
+        if ($userId === $adminId) {
+            return ['success' => false, 'message' => 'No puedes modificar tu propio estado desde este panel.'];
+        }
+
+        // Prevención de afectar a Fundadores si no eres Fundador
+        if ($user['role'] === 'founder') {
+             $stmtAdmin = $this->conn->prepare("SELECT role FROM users WHERE id = :id");
+             $stmtAdmin->execute([':id' => $adminId]);
+             $adminRole = $stmtAdmin->fetchColumn();
+             if ($adminRole !== 'founder') {
+                 return ['success' => false, 'message' => 'No tienes permisos para modificar el estado de un Fundador.'];
+             }
+        }
+        
+        // Extracción y saneamiento de datos
+        $status = (isset($data->status) && $data->status === 'deleted') ? 'deleted' : 'active';
+        $is_suspended = (isset($data->is_suspended) && $data->is_suspended == 1) ? 1 : 0;
+        
+        $suspension_type = null;
+        $suspension_expires_at = null;
+        $suspension_reason = null;
+        
+        $deletion_type = null;
+        $deletion_reason = null;
+
+        if ($status === 'active' && $is_suspended == 1) {
+            $suspension_type = (isset($data->suspension_type) && in_array($data->suspension_type, ['temporal', 'permanent'])) ? $data->suspension_type : null;
+            
+            if (!$suspension_type) {
+                return ['success' => false, 'message' => 'Debes especificar el tipo de suspensión (temporal o permanente).'];
+            }
+
+            if ($suspension_type === 'temporal') {
+                if (empty($data->suspension_expires_at)) {
+                    return ['success' => false, 'message' => 'Debes especificar la fecha y hora de expiración para la suspensión temporal.'];
+                }
+                
+                // Validar formato de fecha (soporte para el input type="datetime-local" del frontend)
+                $d = \DateTime::createFromFormat('Y-m-d\TH:i', $data->suspension_expires_at); 
+                if (!$d) {
+                    $d = \DateTime::createFromFormat('Y-m-d H:i:s', $data->suspension_expires_at);
+                }
+                if (!$d) {
+                    return ['success' => false, 'message' => 'El formato de la fecha de expiración no es válido.'];
+                }
+                $suspension_expires_at = $d->format('Y-m-d H:i:s');
+            }
+
+            $suspension_reason = !empty($data->suspension_reason) ? trim($data->suspension_reason) : null;
+        }
+
+        if ($status === 'deleted') {
+            // Si el administrador lo marca como deleted, le asignamos la etiqueta correspondiente
+            $deletion_type = !empty($data->deletion_type) ? trim($data->deletion_type) : 'admin_banned';
+            $deletion_reason = !empty($data->deletion_reason) ? trim($data->deletion_reason) : null;
+        }
+
+        try {
+            // Leer datos anteriores para dejar registro claro en el log
+            $stmtOld = $this->conn->prepare("SELECT status, is_suspended FROM users WHERE id = :id");
+            $stmtOld->execute([':id' => $userId]);
+            $oldData = $stmtOld->fetch(PDO::FETCH_ASSOC);
+            
+            $oldSummary = "Status: {$oldData['status']}, Suspended: {$oldData['is_suspended']}";
+            $newSummary = "Status: $status, Suspended: $is_suspended";
+
+            // Ejecutar la actualización en base de datos
+            $query = "UPDATE users SET 
+                        status = :status,
+                        is_suspended = :is_suspended,
+                        suspension_type = :suspension_type,
+                        suspension_expires_at = :suspension_expires_at,
+                        suspension_reason = :suspension_reason,
+                        deletion_type = :deletion_type,
+                        deletion_reason = :deletion_reason
+                      WHERE id = :id";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([
+                ':status' => $status,
+                ':is_suspended' => $is_suspended,
+                ':suspension_type' => $suspension_type,
+                ':suspension_expires_at' => $suspension_expires_at,
+                ':suspension_reason' => $suspension_reason,
+                ':deletion_type' => $deletion_type,
+                ':deletion_reason' => $deletion_reason,
+                ':id' => $userId
+            ]);
+
+            // Registrar el cambio de ciclo de vida / acceso
+            $this->logChange($userId, 'account_status_and_access', $oldSummary, $newSummary, $adminId);
+
+            // Medida de seguridad: Destruir/Revocar sesiones activas si la cuenta es suspendida o eliminada
+            if ($status === 'deleted' || $is_suspended == 1) {
+                $delSessions = $this->conn->prepare("DELETE FROM user_sessions WHERE user_id = :id");
+                $delSessions->execute([':id' => $userId]);
+            }
+
+            Logger::system("Admin ID: $adminId actualizó control de acceso para Usuario ID: $userId. $newSummary", Logger::LEVEL_INFO);
+            
+            return ['success' => true, 'message' => 'El estado y control de acceso de la cuenta se han actualizado correctamente.'];
+
+        } catch (\Throwable $e) {
+            Logger::database("Error DB en AdminService::updateAccountStatus", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al actualizar el estado de la cuenta.'];
         }
     }
 }

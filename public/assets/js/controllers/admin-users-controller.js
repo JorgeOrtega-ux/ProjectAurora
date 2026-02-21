@@ -74,6 +74,11 @@ export class AdminUsersController {
                 this.handleManageRole();
             }
 
+            // Toolbar: Administrar estado (NUEVO)
+            if (e.target.closest('[data-action="admin-manage-status"]')) {
+                this.handleManageStatus();
+            }
+
             // Filtros: Navegar a submenú
             const navBtn = e.target.closest('[data-action="admin-filter-nav"]');
             if (navBtn) {
@@ -207,6 +212,24 @@ export class AdminUsersController {
         link.remove();
     }
 
+    handleManageStatus() {
+        const selectedCard = document.querySelector('.js-admin-user-card.selected');
+        if (!selectedCard) {
+            alert('Por favor, selecciona un usuario de la lista primero.');
+            return;
+        }
+        
+        const uuid = selectedCard.dataset.uuid;
+        const targetUrl = `/ProjectAurora/admin/users/manage-status?uuid=${uuid}`;
+        
+        const link = document.createElement('a');
+        link.href = targetUrl;
+        link.dataset.nav = targetUrl;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
     applyFiltersAndSearch() {
         this.clearSelection();
         this.filteredCards = [];
@@ -248,7 +271,7 @@ export class AdminUsersController {
         this.updatePagination();
     }
 
-    updatePagination() {
+updatePagination() {
         const total = this.filteredCards.length;
         const maxPages = Math.ceil(total / this.itemsPerPage) || 1;
         const info = document.getElementById('admin-pag-info');
@@ -260,9 +283,19 @@ export class AdminUsersController {
         if (btnPrev) btnPrev.disabled = this.currentPage === 1;
         if (btnNext) btnNext.disabled = this.currentPage === maxPages || total === 0;
 
-        if (total === 0) {
+        // --- NUEVA LÓGICA DE ESTADOS VACÍOS ---
+        if (this.allCards.length === 0) {
+            // 1. La base de datos está vacía realmente (PHP ya mostró su mensaje).
+            // Ocultamos el mensaje de "filtros sin resultados" de JS.
+            if (emptyState) emptyState.style.display = 'none';
+            
+        } else if (total === 0) {
+            // 2. Hay usuarios en BD, pero los filtros/búsqueda ocultaron todos.
+            // Mostramos el mensaje de JS.
             if (emptyState) emptyState.style.display = 'block';
+            
         } else {
+            // 3. Hay resultados válidos. Ocultamos el mensaje vacío y paginamos.
             if (emptyState) emptyState.style.display = 'none';
             const start = (this.currentPage - 1) * this.itemsPerPage;
             const end = start + this.itemsPerPage;
@@ -276,7 +309,6 @@ export class AdminUsersController {
             });
         }
     }
-
     resetFilterView() {
         const viewport = document.getElementById('filter-viewport');
         const btnBack = document.getElementById('filter-btn-back');
@@ -309,6 +341,7 @@ export class AdminUsersController {
                 `;
             });
         } else if (targetType === 'view-status') {
+            // El backend retorna 'active', 'deleted', o 'suspended' (derivado de is_suspended)
             const statuses = ['active', 'suspended', 'deleted'];
             statuses.forEach(status => {
                 const isChecked = this.filters.status.includes(status) ? 'checked' : '';

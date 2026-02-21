@@ -42,6 +42,7 @@ return [
     'admin.update_avatar'         => ['file' => 'handler/admin-handler.php', 'action' => 'update_avatar'],
     'admin.delete_avatar'         => ['file' => 'handler/admin-handler.php', 'action' => 'delete_avatar'],
     'admin.update_field'          => ['file' => 'handler/admin-handler.php', 'action' => 'update_field'],
-    'admin.update_preference'     => ['file' => 'handler/admin-handler.php', 'action' => 'update_preference']
+    'admin.update_preference'     => ['file' => 'handler/admin-handler.php', 'action' => 'update_preference'],
+    'admin.update_status'         => ['file' => 'handler/admin-handler.php', 'action' => 'update_status']
 ];
 ?>

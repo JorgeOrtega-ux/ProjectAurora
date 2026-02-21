@@ -64,6 +64,13 @@ return function($dbConnection, $action) {
             Utils::sendResponse($adminService->updatePreference($data->target_uuid, $data->field, $data->value, $adminId));
             break;
 
+        case 'update_status':
+            if (empty($data->target_uuid)) {
+                Utils::sendResponse(['success' => false, 'message' => 'UUID objetivo requerido.']);
+            }
+            Utils::sendResponse($adminService->updateAccountStatus($data->target_uuid, $data, $adminId));
+            break;
+
         default:
             Utils::sendResponse(['success' => false, 'message' => 'Acción administrativa no válida.']);
             break;

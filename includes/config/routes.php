@@ -31,6 +31,7 @@ return [
     '/admin/users' => ['view' => 'admin/admin-users.php', 'access' => 'admin', 'layout' => 'main'],
     '/admin/users/manage-account' => ['view' => 'admin/admin-manage-user.php', 'access' => 'admin', 'layout' => 'main'],
     '/admin/users/manage-role' => ['view' => 'admin/admin-manage-role.php', 'access' => 'admin', 'layout' => 'main'],
+    '/admin/users/manage-status' => ['view' => 'admin/admin-manage-status.php', 'access' => 'admin', 'layout' => 'main'],
     '/admin/backups' => ['view' => 'admin/admin-backups.php', 'access' => 'admin', 'layout' => 'main'],
     '/admin/server' => ['view' => 'admin/admin-server.php', 'access' => 'admin', 'layout' => 'main']
 ];

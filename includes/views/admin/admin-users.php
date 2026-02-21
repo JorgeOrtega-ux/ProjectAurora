@@ -7,7 +7,8 @@ $users = [];
 global $dbConnection;
 if (isset($dbConnection)) {
     try {
-        $stmt = $dbConnection->query("SELECT uuid, username, email, role, status, avatar_path, created_at FROM users ORDER BY created_at DESC");
+        // Se agregó is_suspended a la consulta
+        $stmt = $dbConnection->query("SELECT uuid, username, email, role, status, is_suspended, avatar_path, created_at FROM users ORDER BY created_at DESC");
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
         // En caso de error, el arreglo quedará vacío
@@ -105,7 +106,7 @@ if (isset($dbConnection)) {
                         <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_role') ?>" data-action="admin-manage-role">
                             <span class="material-symbols-rounded">admin_panel_settings</span>
                         </button>
-                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_status') ?>">
+                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_status') ?>" data-action="admin-manage-status">
                             <span class="material-symbols-rounded">gpp_maybe</span>
                         </button>
                     </div>
@@ -186,16 +187,27 @@ if (isset($dbConnection)) {
                     $avatarPath = '/ProjectAurora/' . ltrim($user['avatar_path'], '/');
                     $dateFormatted = date('d M, Y', strtotime($user['created_at']));
                     
+                    // --- NUEVA LÓGICA DE BADGE ---
                     $statusIcon = 'check_circle';
-                    if ($user['status'] === 'suspended') $statusIcon = 'block';
-                    if ($user['status'] === 'deleted') $statusIcon = 'delete_forever';
+                    $statusLabel = t('admin.filter.status.active') ?? 'Activo';
+                    $filterStatusValue = 'active';
+
+                    if ($user['status'] === 'deleted') {
+                        $statusIcon = 'delete_forever';
+                        $statusLabel = t('admin.filter.status.deleted') ?? 'Eliminado';
+                        $filterStatusValue = 'deleted';
+                    } elseif ($user['is_suspended'] == 1) {
+                        $statusIcon = 'block';
+                        $statusLabel = t('admin.filter.status.suspended') ?? 'Suspendido';
+                        $filterStatusValue = 'suspended';
+                    }
                 ?>
                     <div class="component-user-card js-admin-user-card" 
                          data-uuid="<?= htmlspecialchars($user['uuid']) ?>"
                          data-username="<?= strtolower(htmlspecialchars($user['username'])) ?>"
                          data-email="<?= strtolower(htmlspecialchars($user['email'])) ?>"
                          data-role="<?= htmlspecialchars($user['role']) ?>"
-                         data-status="<?= htmlspecialchars($user['status']) ?>">
+                         data-status="<?= $filterStatusValue ?>">
                         
                         <div class="admin-user-avatar-box" data-role="<?= htmlspecialchars($user['role']) ?>">
                             <img src="<?= htmlspecialchars($avatarPath) ?>" alt="Avatar" loading="lazy">
@@ -213,12 +225,12 @@ if (isset($dbConnection)) {
                         
                         <span class="component-badge" title="Rol del usuario">
                             <span class="material-symbols-rounded">shield_person</span>
-                            <?= t('admin.filter.role.' . $user['role']) ?>
+                            <?= t('admin.filter.role.' . $user['role']) ?? htmlspecialchars($user['role']) ?>
                         </span>
                         
                         <span class="component-badge" title="Estado de la cuenta">
                             <span class="material-symbols-rounded"><?= $statusIcon ?></span>
-                            <?= t('admin.filter.status.' . $user['status']) ?>
+                            <?= $statusLabel ?>
                         </span>
                         
                         <span class="component-badge" title="Identificador único (UUID)">

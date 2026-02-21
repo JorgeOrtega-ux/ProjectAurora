@@ -108,10 +108,9 @@ class AuthService {
             $webDir = 'storage/profilePictures/default/';
             $webPath = Utils::generateAndSaveAvatar($username, $uuid, $storageDir, $webDir);
 
-            // Asegurar que el estatus por defecto es active, aunque en DB ya está configurado
             $query = "INSERT INTO " . $this->table_name . " 
-                     (uuid, username, email, password, avatar_path, status) 
-                     VALUES (:uuid, :username, :email, :password, :avatar_path, 'active')";
+                     (uuid, username, email, password, avatar_path, status, is_suspended) 
+                     VALUES (:uuid, :username, :email, :password, :avatar_path, 'active', 0)";
             
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':uuid', $uuid);
@@ -185,8 +184,8 @@ class AuthService {
         }
 
         try {
-            // Se añade el campo `status` a la consulta
-            $query = "SELECT id, uuid, username, email, password, avatar_path, role, status, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1";
+            // Consulta actualizada con las nuevas columnas
+            $query = "SELECT id, uuid, username, email, password, avatar_path, role, status, is_suspended, suspension_type, suspension_expires_at, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email', $email);
             $stmt->execute();
@@ -194,14 +193,32 @@ class AuthService {
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                // --- VERIFICAR ESTATUS DE LA CUENTA ANTES DE VALIDAR CONTRASEÑA ---
-                if ($row['status'] === 'suspended') {
-                    Logger::system("Intento de login en cuenta suspendida: $email", Logger::LEVEL_WARNING);
-                    return ['success' => false, 'message' => 'Tu cuenta ha sido suspendida. Contacta a soporte para más información.'];
-                }
+                // --- VERIFICAR CICLO DE VIDA (ELIMINACIÓN) ---
                 if ($row['status'] === 'deleted') {
                     Logger::system("Intento de login en cuenta eliminada: $email", Logger::LEVEL_WARNING);
                     return ['success' => false, 'message' => 'Esta cuenta ha sido eliminada.'];
+                }
+
+                // --- VERIFICAR CONTROL DE ACCESO (SUSPENSIÓN) ---
+                if ($row['is_suspended'] == 1) {
+                    if ($row['suspension_type'] === 'permanent') {
+                        Logger::system("Intento de login en cuenta suspendida permanentemente: $email", Logger::LEVEL_WARNING);
+                        return ['success' => false, 'message' => 'Tu cuenta ha sido suspendida permanentemente. Contacta a soporte para más información.'];
+                    } else if ($row['suspension_type'] === 'temporal') {
+                        $now = new \DateTime();
+                        $expiresAt = new \DateTime($row['suspension_expires_at']);
+                        
+                        if ($now < $expiresAt) {
+                            $fecha = $expiresAt->format('d/m/Y H:i');
+                            Logger::system("Intento de login en cuenta suspendida temporalmente: $email", Logger::LEVEL_WARNING);
+                            return ['success' => false, 'message' => "Tu cuenta está suspendida temporalmente hasta el $fecha."];
+                        } else {
+                            // Suspensión expiró. Limpiamos y permitimos continuar la validación de contraseña.
+                            $updStmt = $this->conn->prepare("UPDATE " . $this->table_name . " SET is_suspended = 0, suspension_type = NULL, suspension_expires_at = NULL, suspension_reason = NULL WHERE id = :id");
+                            $updStmt->execute([':id' => $row['id']]);
+                            Logger::system("Suspensión temporal expirada para: $email. Acceso permitido.", Logger::LEVEL_INFO);
+                        }
+                    }
                 }
 
                 if (password_verify($password, $row['password'])) {
@@ -282,7 +299,7 @@ class AuthService {
         $userId = $_SESSION['temp_2fa_user_id'];
         
         try {
-            $query = "SELECT id, uuid, username, email, avatar_path, role, status, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
+            $query = "SELECT id, uuid, username, email, avatar_path, role, status, is_suspended, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId);
             $stmt->execute();
@@ -290,8 +307,12 @@ class AuthService {
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($row['status'] !== 'active') {
-                    return ['success' => false, 'message' => 'Tu cuenta se encuentra suspendida o eliminada.'];
+                if ($row['status'] === 'deleted') {
+                    return ['success' => false, 'message' => 'Esta cuenta ha sido eliminada.'];
+                }
+                
+                if ($row['is_suspended'] == 1) {
+                    return ['success' => false, 'message' => 'Tu cuenta se encuentra suspendida.'];
                 }
                 
                 $isValid = false;
@@ -383,7 +404,6 @@ class AuthService {
         }
 
         try {
-            // Verificar si el correo existe y si la cuenta no está eliminada
             $stmtCheck = $this->conn->prepare("SELECT id, status FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1");
             $stmtCheck->bindParam(':email', $email);
             $stmtCheck->execute();
