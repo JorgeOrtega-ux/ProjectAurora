@@ -20,7 +20,6 @@ export const API_ROUTES = {
         REQUEST_EMAIL_CHANGE: `${BASE_PATH}/api/settings.request_email_change`,
         CONFIRM_EMAIL_CHANGE: `${BASE_PATH}/api/settings.confirm_email_change`,
         
-        // AGREGAR ESTA LÍNEA AQUÍ:
         DELETE_ACCOUNT: `${BASE_PATH}/api/settings.delete_account`,
         
         GET_PREFERENCES: `${BASE_PATH}/api/settings.get_preferences`,
@@ -39,5 +38,10 @@ export const API_ROUTES = {
         GET_DEVICES: `${BASE_PATH}/api/settings.get_devices`,
         REVOKE_DEVICE: `${BASE_PATH}/api/settings.revoke_device`,
         REVOKE_ALL_DEVICES: `${BASE_PATH}/api/settings.revoke_all_devices`
+    },
+    ADMIN: {
+        UPDATE_AVATAR: `${BASE_PATH}/api/admin.update_avatar`,
+        DELETE_AVATAR: `${BASE_PATH}/api/admin.delete_avatar`,
+        UPDATE_FIELD: `${BASE_PATH}/api/admin.update_field`
     }
 };

@@ -36,6 +36,11 @@ return [
     // --- RUTAS DE GESTIÓN DE DISPOSITIVOS (SESIONES) ---
     'settings.get_devices'        => ['file' => 'handler/settings-handler.php', 'action' => 'get_devices'],
     'settings.revoke_device'      => ['file' => 'handler/settings-handler.php', 'action' => 'revoke_device'],
-    'settings.revoke_all_devices' => ['file' => 'handler/settings-handler.php', 'action' => 'revoke_all_devices']
+    'settings.revoke_all_devices' => ['file' => 'handler/settings-handler.php', 'action' => 'revoke_all_devices'],
+
+    // --- RUTAS DE ADMINISTRACIÓN ---
+    'admin.update_avatar'         => ['file' => 'handler/admin-handler.php', 'action' => 'update_avatar'],
+    'admin.delete_avatar'         => ['file' => 'handler/admin-handler.php', 'action' => 'delete_avatar'],
+    'admin.update_field'          => ['file' => 'handler/admin-handler.php', 'action' => 'update_field']
 ];
 ?>

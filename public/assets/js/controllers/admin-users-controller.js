@@ -64,6 +64,11 @@ export class AdminUsersController {
                 this.clearSelection();
             }
 
+            // Toolbar: Administrar cuenta
+            if (e.target.closest('[data-action="admin-manage-account"]')) {
+                this.handleManageAccount();
+            }
+
             // Filtros: Navegar a submenú
             const navBtn = e.target.closest('[data-action="admin-filter-nav"]');
             if (navBtn) {
@@ -158,6 +163,25 @@ export class AdminUsersController {
             searchToolbar.classList.add('active');
             setTimeout(() => document.getElementById('admin-user-search-input').focus(), 100);
         }
+    }
+
+    handleManageAccount() {
+        const selectedCard = document.querySelector('.js-admin-user-card.selected');
+        if (!selectedCard) {
+            alert('Por favor, selecciona un usuario de la lista primero.');
+            return;
+        }
+        
+        const uuid = selectedCard.dataset.uuid;
+        const targetUrl = `/ProjectAurora/admin/users/manage-account?uuid=${uuid}`;
+        
+        // Creamos un link falso para que el router SPA lo intercepte de forma natural
+        const link = document.createElement('a');
+        link.href = targetUrl;
+        link.dataset.nav = targetUrl;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     }
 
     applyFiltersAndSearch() {

@@ -99,7 +99,7 @@ if (isset($dbConnection)) {
 
                 <div class="toolbar-group component-toolbar--secondary" id="toolbar-selection">
                     <div class="component-toolbar__side">
-                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_manage') ?>">
+                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_manage') ?>" data-action="admin-manage-account">
                             <span class="material-symbols-rounded">manage_accounts</span>
                         </button>
                         <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_role') ?>">
