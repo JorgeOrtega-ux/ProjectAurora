@@ -106,6 +106,7 @@ try {
 if (isset($_SESSION['user_id']) && isset($dbConnection)) {
     $currentSessionId = session_id();
     $userId = $_SESSION['user_id'];
+    $appUrl = rtrim(getenv('APP_URL') ?: 'http://localhost/ProjectAurora', '/');
     
     try {
         // Validación de sesión remota
@@ -122,12 +123,12 @@ if (isset($_SESSION['user_id']) && isset($dbConnection)) {
             session_destroy();
             
             if ($isApiRequest) {
-                header('X-SPA-Redirect: /ProjectAurora/login');
+                header("X-SPA-Redirect: {$appUrl}/login");
                 http_response_code(401);
                 echo json_encode(['success' => false, 'message' => 'Sesión expirada o revocada desde otro dispositivo.']);
                 exit;
             } else {
-                header("Location: /ProjectAurora/login");
+                header("Location: {$appUrl}/login");
                 exit;
             }
         } else {
@@ -151,12 +152,12 @@ if (isset($_SESSION['user_id']) && isset($dbConnection)) {
             $statusMessage = ($userData && $userData['status'] === 'suspended') ? 'Tu cuenta ha sido suspendida.' : 'Tu cuenta ha sido eliminada o no existe.';
             
             if ($isApiRequest) {
-                header('X-SPA-Redirect: /ProjectAurora/login');
+                header("X-SPA-Redirect: {$appUrl}/login");
                 http_response_code(401);
                 echo json_encode(['success' => false, 'message' => $statusMessage]);
                 exit;
             } else {
-                header("Location: /ProjectAurora/login");
+                header("Location: {$appUrl}/login");
                 exit;
             }
         }

@@ -128,7 +128,8 @@ class Utils {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             $mail->Port       = getenv('SMTP_PORT') ?: 465;
 
-            $mail->setFrom(getenv('SMTP_USER'), 'Project Aurora');
+            $appName = getenv('APP_NAME') ?: 'Project Aurora';
+            $mail->setFrom(getenv('SMTP_USER'), $appName);
             $mail->addAddress($to);
 
             $mail->isHTML(true);

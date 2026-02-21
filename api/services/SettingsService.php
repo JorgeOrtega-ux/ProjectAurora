@@ -5,6 +5,7 @@ namespace App\Api\Services;
 use PDO;
 use App\Core\Utils;
 use App\Core\Logger;
+use App\Core\EmailTemplates;
 use RobThree\Auth\TwoFactorAuth;
 
 class SettingsService {
@@ -212,14 +213,10 @@ class SettingsService {
             $stmt = $this->conn->prepare($query);
             $stmt->execute([':identifier' => $userId, ':code' => $code, ':payload' => $payload, ':expires_at' => $expires_at]);
 
-            $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
-                        <h2>Cambio de Correo Electrónico</h2><p>Hola {$userName},</p>
-                        <p>Se ha solicitado un cambio en tu cuenta para actualizar el correo a: <b>{$newEmail}</b>.</p>
-                        <p>Para autorizar el cambio, ingresa el siguiente código de seguridad:</p>
-                        <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
-                        <p>Este código expirará en 15 minutos.</p></div>";
+            $appName = getenv('APP_NAME') ?: 'Project Aurora';
+            $html = EmailTemplates::getEmailChangeEmail($userName, $newEmail, $code);
 
-            if (Utils::sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
+            if (Utils::sendEmail($currentEmail, "Código de Verificación - {$appName}", $html)) {
                 Utils::resetAttempts($this->conn, 'request_email_change');
                 Logger::system("Código de cambio de correo enviado al usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Código de verificación enviado a tu correo actual.'];
@@ -421,7 +418,8 @@ class SettingsService {
                 throw new \Exception("Clase RobThree no encontrada. Error crítico de dependencias.");
             }
 
-            $tfa = new \RobThree\Auth\TwoFactorAuth('Project Aurora');
+            $appName = getenv('APP_NAME') ?: 'Project Aurora';
+            $tfa = new \RobThree\Auth\TwoFactorAuth($appName);
             $secret = $user['two_factor_secret'];
             
             if (empty($secret)) {
@@ -431,7 +429,7 @@ class SettingsService {
                 $upd->execute([':sec' => $secret, ':id' => $userId]);
             }
 
-            $qrUrl = $tfa->getQRCodeImageAsDataUri('Project Aurora (' . $user['email'] . ')', $secret);
+            $qrUrl = $tfa->getQRCodeImageAsDataUri($appName . ' (' . $user['email'] . ')', $secret);
 
             return [
                 'success' => true,
@@ -452,7 +450,8 @@ class SettingsService {
             $stmt->execute([':id' => $userId]);
             $secret = $stmt->fetchColumn();
 
-            $tfa = new \RobThree\Auth\TwoFactorAuth('Project Aurora');
+            $appName = getenv('APP_NAME') ?: 'Project Aurora';
+            $tfa = new \RobThree\Auth\TwoFactorAuth($appName);
             if ($tfa->verifyCode($secret, $code)) {
                 $recoveryCodes = [];
                 for ($i = 0; $i < 10; $i++) { $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4)); }

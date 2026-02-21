@@ -5,6 +5,7 @@ namespace App\Api\Services;
 use PDO;
 use App\Core\Utils;
 use App\Core\Logger;
+use App\Core\EmailTemplates;
 
 class AuthService {
     private $conn;
@@ -59,15 +60,10 @@ class AuthService {
             $stmt->bindParam(':expires_at', $expires_at);
 
             if ($stmt->execute()) {
-                $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
-                            <h2>Bienvenido a Project Aurora</h2>
-                            <p>Hola {$data->username},</p>
-                            <p>Tu código de activación es:</p>
-                            <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
-                            <p>Este código expirará en 15 minutos.</p>
-                         </div>";
+                $appName = getenv('APP_NAME') ?: 'Project Aurora';
+                $html = EmailTemplates::getActivationEmail($data->username, $code);
 
-                if (Utils::sendEmail($data->email, 'Código de Activación - Project Aurora', $html)) {
+                if (Utils::sendEmail($data->email, "Código de Activación - {$appName}", $html)) {
                     Logger::system("Código de activación enviado correctamente al correo: {$data->email}", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Código enviado a tu correo.'];
                 }
@@ -438,19 +434,13 @@ class AuthService {
             $stmt->bindParam(':expires_at', $expires_at);
 
             if ($stmt->execute()) {
-                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-                $host = $_SERVER['HTTP_HOST'];
-                $resetLink = $protocol . $host . "/ProjectAurora/reset-password?token=" . $token;
+                $appName = getenv('APP_NAME') ?: 'Project Aurora';
+                $appUrl = rtrim(getenv('APP_URL') ?: 'http://localhost/ProjectAurora', '/');
+                $resetLink = $appUrl . "/reset-password?token=" . $token;
 
-                $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
-                            <h2>Recuperación de Contraseña</h2>
-                            <p>Has solicitado restablecer tu contraseña para Project Aurora.</p>
-                            <p>Haz clic en el siguiente enlace para continuar:</p>
-                            <p><a href='{$resetLink}' style='display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px;'>Restablecer Contraseña</a></p>
-                            <p style='font-size: 12px; color: #666; margin-top: 24px;'>Si no solicitaste este cambio, ignora este correo. El enlace expirará en 1 hora.</p>
-                         </div>";
+                $html = EmailTemplates::getPasswordResetEmail($resetLink);
 
-                if (Utils::sendEmail($email, 'Recuperación de Contraseña - Project Aurora', $html)) {
+                if (Utils::sendEmail($email, "Recuperación de Contraseña - {$appName}", $html)) {
                     Logger::system("Enlace de recuperación de contraseña enviado a: $email", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Enlace de recuperación enviado.'];
                 }

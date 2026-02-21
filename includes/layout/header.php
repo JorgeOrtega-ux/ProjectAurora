@@ -5,6 +5,7 @@ $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
 $role = $isLoggedIn && isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'user';
 $styleGuest = $isLoggedIn ? 'display: none !important;' : 'display: flex !important;';
 $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !important;';
+$appUrl = rtrim(getenv('APP_URL') ?: '/ProjectAurora', '/');
 ?>
 
 <div class="header">
@@ -30,7 +31,7 @@ $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !import
             </button>
             
             <div class="auth-guest-actions" style="<?= $styleGuest; ?> gap: 8px;">
-                <button class="component-button component-button--black component-button--rect-40" onclick="window.location.href='/ProjectAurora/login'">
+                <button class="component-button component-button--black component-button--rect-40" onclick="window.location.href='<?= htmlspecialchars($appUrl) ?>/login'">
                     <?= t('header.login') ?>
                 </button>
                 <button class="component-button component-button--square-40" data-action="toggleModuleMainOptions" data-tooltip="Opciones de cuenta">
