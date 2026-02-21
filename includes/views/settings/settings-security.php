@@ -62,10 +62,10 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item" data-component="password-update-section">
+            <div class="component-group-item component-group-item--wrap" data-component="password-update-section">
                 
                 <div class="component-card__content">
-                    <div>
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">lock</span>
                     </div>
                     <div class="component-card__text">
@@ -125,9 +125,9 @@ if (isset($_SESSION['user_id'])) {
             
             <hr class="component-divider">
 
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
-                    <div>
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">shield</span>
                     </div>
                     <div class="component-card__text">
@@ -146,9 +146,9 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
-                    <div>
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">devices</span>
                     </div>
                     <div class="component-card__text">
@@ -166,7 +166,7 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.delete_title') ?></h2>

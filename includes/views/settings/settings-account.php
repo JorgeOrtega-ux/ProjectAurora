@@ -78,7 +78,7 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                 </div>
             </div>
             <hr class="component-divider">
-            <div class="component-group-item" data-component="username-section">
+            <div class="component-group-item component-group-item--wrap" data-component="username-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.username') ?></h2>
@@ -99,7 +99,7 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                 </div>
             </div>
             <hr class="component-divider">
-            <div class="component-group-item" data-component="email-section">
+            <div class="component-group-item component-group-item--wrap" data-component="email-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.email') ?></h2>
@@ -164,7 +164,7 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
             </div>
         </div>
         <div class="component-card--grouped">
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.links') ?></h2>

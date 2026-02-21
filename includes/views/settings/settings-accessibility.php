@@ -91,7 +91,7 @@ $checkedAlertsAttr = $prefs['extended_alerts'] ? 'checked' : '';
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.access.alerts') ?></h2>

@@ -9,7 +9,7 @@
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item">
+            <div class="component-group-item component-group-item--wrap">
                 <div class="component-card__content">
                     <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">phonelink_erase</span>
