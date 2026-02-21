@@ -56,7 +56,7 @@ $checkedAlertsAttr = $prefs['extended_alerts'] ? 'checked' : '';
                         <p class="component-card__description"><?= t('settings.access.theme_desc') ?></p>
                     </div>
                 </div>
-                <div class="component-card__actions w-100">
+                <div class="component-card__actions">
                     <div class="component-dropdown" data-pref-key="theme">
                         <div class="component-dropdown-trigger" data-action="toggle-dropdown">
                             <span class="material-symbols-rounded trigger-select-icon"><?= $currentThemeIcon ?></span>

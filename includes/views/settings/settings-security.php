@@ -15,12 +15,12 @@ if (isset($_SESSION['user_id'])) {
 
         try {
             // 1. Obtener la fecha de creación de la cuenta
-            $stmtUser = $dbConnection->prepare("SELECT fecha FROM users WHERE id = :id LIMIT 1");
+            $stmtUser = $dbConnection->prepare("SELECT created_at FROM users WHERE id = :id LIMIT 1");
             $stmtUser->execute([':id' => $userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
             
-            if ($userData && !empty($userData['fecha'])) {
-                $timestampUser = strtotime($userData['fecha']);
+            if ($userData && !empty($userData['created_at'])) {
+                $timestampUser = strtotime($userData['created_at']);
                 $diaUser = date('j', $timestampUser);
                 $mesUser = $meses[date('n', $timestampUser) - 1];
                 $anioUser = date('Y', $timestampUser);
@@ -31,7 +31,7 @@ if (isset($_SESSION['user_id'])) {
             $stmtLog = $dbConnection->prepare("
                 SELECT changed_at 
                 FROM user_changes_log 
-                WHERE user_id = :id AND modified_field = 'contrasena' 
+                WHERE user_id = :id AND modified_field = 'password' 
                 ORDER BY changed_at DESC 
                 LIMIT 1
             ");
@@ -62,11 +62,11 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
         <div class="component-card--grouped">
-            <div class="component-group-item" data-component="password-update-section" style="flex-direction: column; align-items: flex-start;">
+            <div class="component-group-item" data-component="password-update-section">
                 
-                <div class="component-card__content" style="width: 100%;">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">lock</span>
+                <div class="component-card__content">
+                    <div>
+                        <span class="material-symbols-rounded">lock</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.pass_title') ?></h2>
@@ -79,13 +79,13 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-card__actions actions-right active w-100" data-state="password-stage-0" style="justify-content: flex-end; margin-top: 8px;">
+                <div class="component-card__actions actions-right active" data-state="password-stage-0">
                     <button type="button" class="component-button" data-action="pass-start-flow">
                         <?= t('settings.security.pass_btn_change') ?>
                     </button>
                 </div>
 
-                <div class="w-100 component-stage-form disabled" data-state="password-stage-1" style="margin-top: 16px;">
+                <div class="component-stage-form disabled" data-state="password-stage-1">
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input has-action" id="current-password-input" placeholder=" ">
                         <label for="current-password-input" class="component-label-floating"><?= t('settings.security.pass_placeholder_current') ?></label>
@@ -94,14 +94,14 @@ if (isset($_SESSION['user_id'])) {
                         </button>
                     </div>
 
-                    <div class="component-card__actions actions-right" style="margin-top: 12px;">
+                    <div class="component-card__actions actions-right">
                         <button type="button" class="component-button" data-action="pass-cancel-flow"><?= t('settings.security.pass_btn_cancel') ?></button>
                         <button type="button" class="component-button primary" data-action="pass-go-step-2"><?= t('settings.security.pass_btn_continue') ?></button>
                     </div>
                 </div>
 
-                <div class="w-100 component-stage-form disabled" data-state="password-stage-2" style="margin-top: 16px;">
-                    <div class="component-input-wrapper" style="margin-bottom: 8px;">
+                <div class="component-stage-form disabled" data-state="password-stage-2">
+                    <div class="component-input-wrapper">
                         <input type="password" class="component-text-input has-action" id="new-password-input" placeholder=" ">
                         <label for="new-password-input" class="component-label-floating"><?= t('settings.security.pass_placeholder_new') ?></label>
                         <button type="button" class="component-input-action" tabindex="-1">
@@ -116,7 +116,7 @@ if (isset($_SESSION['user_id'])) {
                         </button>
                     </div>
 
-                    <div class="component-card__actions actions-right" style="margin-top: 12px;">
+                    <div class="component-card__actions actions-right">
                         <button type="button" class="component-button" data-action="pass-cancel-flow"><?= t('settings.security.pass_btn_cancel') ?></button>
                         <button type="button" class="component-button primary" data-action="pass-submit-final"><?= t('settings.security.pass_btn_save') ?></button>
                     </div>
@@ -127,8 +127,8 @@ if (isset($_SESSION['user_id'])) {
 
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">shield</span>
+                    <div>
+                        <span class="material-symbols-rounded">shield</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.2fa_title') ?></h2>
@@ -148,8 +148,8 @@ if (isset($_SESSION['user_id'])) {
         <div class="component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-surface-alt); flex-shrink: 0;">
-                        <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 20px;">devices</span>
+                    <div>
+                        <span class="material-symbols-rounded">devices</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.devices_title') ?></h2>
@@ -169,7 +169,7 @@ if (isset($_SESSION['user_id'])) {
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" style="color: var(--action-danger);"><?= t('settings.security.delete_title') ?></h2>
+                        <h2 class="component-card__title"><?= t('settings.security.delete_title') ?></h2>
                         <p class="component-card__description">
                             <?= $accountCreationDate 
                                 ? t('settings.security.delete_desc_date', ['creation_date' => $accountCreationDate]) 
@@ -180,7 +180,7 @@ if (isset($_SESSION['user_id'])) {
                 </div>
 
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" style="color: var(--action-danger); border-color: var(--action-danger);" data-nav="/ProjectAurora/settings/delete-account">
+                    <button type="button" class="component-button" data-nav="/ProjectAurora/settings/delete-account">
                         <?= t('settings.security.delete_btn') ?>
                     </button>
                 </div>

@@ -72,7 +72,7 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                         <button type="button" class="component-button primary" data-action="profile-picture-save"><?= t('settings.account.save') ?></button>
                     </div>
                     <div class="component-action-group <?= $stateCustomClass; ?>" data-state="profile-picture-actions-custom">
-                        <button type="button" class="component-button" data-action="profile-picture-delete" style="color: #d32f2f; border-color: #d32f2f30;"><?= t('settings.account.delete') ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-delete"><?= t('settings.account.delete') ?></button>
                         <button type="button" class="component-button primary" data-action="profile-picture-change"><?= t('settings.account.change') ?></button>
                     </div>
                 </div>
@@ -83,11 +83,11 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.username') ?></h2>
                         <div class="active" data-state="username-view-state"><span class="text-display-value" id="display-username"><?= htmlspecialchars($userName); ?></span></div>
-                        <div class="disabled w-100 input-group-responsive" data-state="username-edit-state">
-                            <div class="component-input-wrapper flex-1" style="height: 36px;">
+                        <div class="disabled input-group-responsive" data-state="username-edit-state">
+                            <div class="component-input-wrapper">
                                 <input type="text" class="component-text-input component-text-input--simple" id="input-username" value="<?= htmlspecialchars($userName); ?>">
                             </div>
-                            <div class="component-card__actions disabled m-0" data-state="username-actions-edit">
+                            <div class="component-card__actions disabled" data-state="username-actions-edit">
                                 <button type="button" class="component-button" data-action="cancel-edit" data-target="username"><?= t('settings.account.cancel') ?></button>
                                 <button type="button" class="component-button primary" data-action="save-field" data-target="username"><?= t('settings.account.save') ?></button>
                             </div>
@@ -104,11 +104,11 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.email') ?></h2>
                         <div class="active" data-state="email-view-state"><span class="text-display-value" id="display-email"><?= htmlspecialchars($userEmail); ?></span></div>
-                        <div class="disabled w-100 input-group-responsive" data-state="email-edit-state">
-                            <div class="component-input-wrapper flex-1" style="height: 36px;">
+                        <div class="disabled input-group-responsive" data-state="email-edit-state">
+                            <div class="component-input-wrapper">
                                 <input type="email" class="component-text-input component-text-input--simple" id="input-email" value="<?= htmlspecialchars($userEmail); ?>">
                             </div>
-                            <div class="component-card__actions disabled m-0" data-state="email-actions-edit">
+                            <div class="component-card__actions disabled" data-state="email-actions-edit">
                                 <button type="button" class="component-button" data-action="cancel-edit" data-target="email"><?= t('settings.account.cancel') ?></button>
                                 <button type="button" class="component-button primary" data-action="save-field" data-target="email"><?= t('settings.account.save') ?></button>
                             </div>
@@ -128,7 +128,7 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                         <p class="component-card__description"><?= t('settings.account.lang_desc') ?></p>
                     </div>
                 </div>
-                <div class="component-card__actions w-100">
+                <div class="component-card__actions">
                     <div class="component-dropdown" data-pref-key="language">
                         <div class="component-dropdown-trigger" data-action="toggle-dropdown">
                             <span class="material-symbols-rounded trigger-select-icon">language</span>

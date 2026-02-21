@@ -16,9 +16,9 @@ class AuthService {
 
     public function checkEmail($email) {
         try {
-            $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+            $query = "SELECT id FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':correo', $email);
+            $stmt->bindParam(':email', $email);
             $stmt->execute();
             
             return $stmt->rowCount() > 0;
@@ -110,14 +110,14 @@ class AuthService {
 
             // Asegurar que el estatus por defecto es active, aunque en DB ya está configurado
             $query = "INSERT INTO " . $this->table_name . " 
-                     (uuid, nombre, correo, contrasena, avatar_path, status) 
-                     VALUES (:uuid, :nombre, :correo, :contrasena, :avatar_path, 'active')";
+                     (uuid, username, email, password, avatar_path, status) 
+                     VALUES (:uuid, :username, :email, :password, :avatar_path, 'active')";
             
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':uuid', $uuid);
-            $stmt->bindParam(':nombre', $username);
-            $stmt->bindParam(':correo', $email);
-            $stmt->bindParam(':contrasena', $password_hash);
+            $stmt->bindParam(':username', $username);
+            $stmt->bindParam(':email', $email);
+            $stmt->bindParam(':password', $password_hash);
             $stmt->bindParam(':avatar_path', $webPath);
 
             if ($stmt->execute()) {
@@ -186,9 +186,9 @@ class AuthService {
 
         try {
             // Se añade el campo `status` a la consulta
-            $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role, status, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+            $query = "SELECT id, uuid, username, email, password, avatar_path, role, status, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':correo', $email);
+            $stmt->bindParam(':email', $email);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
@@ -204,7 +204,7 @@ class AuthService {
                     return ['success' => false, 'message' => 'Esta cuenta ha sido eliminada.'];
                 }
 
-                if (password_verify($password, $row['contrasena'])) {
+                if (password_verify($password, $row['password'])) {
                     
                     // --- INTEGRACIÓN 2FA ---
                     if (isset($row['two_factor_enabled']) && $row['two_factor_enabled'] == 1) {
@@ -227,8 +227,8 @@ class AuthService {
 
                     $_SESSION['user_id'] = $row['id'];
                     $_SESSION['user_uuid'] = $row['uuid'];
-                    $_SESSION['user_name'] = $row['nombre'];
-                    $_SESSION['user_email'] = $row['correo'];
+                    $_SESSION['user_name'] = $row['username'];
+                    $_SESSION['user_email'] = $row['email'];
                     $_SESSION['user_avatar'] = $row['avatar_path'];
                     $_SESSION['user_role'] = $row['role'];
 
@@ -251,7 +251,7 @@ class AuthService {
                         'success' => true,
                         'message' => 'Inicio de sesión exitoso.',
                         'user' => [
-                            'name' => $row['nombre'],
+                            'name' => $row['username'],
                             'avatar' => $row['avatar_path'],
                             'role' => $row['role']
                         ]
@@ -282,7 +282,7 @@ class AuthService {
         $userId = $_SESSION['temp_2fa_user_id'];
         
         try {
-            $query = "SELECT id, uuid, nombre, correo, avatar_path, role, status, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
+            $query = "SELECT id, uuid, username, email, avatar_path, role, status, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId);
             $stmt->execute();
@@ -321,8 +321,8 @@ class AuthService {
                     
                     $_SESSION['user_id'] = $row['id'];
                     $_SESSION['user_uuid'] = $row['uuid'];
-                    $_SESSION['user_name'] = $row['nombre'];
-                    $_SESSION['user_email'] = $row['correo'];
+                    $_SESSION['user_name'] = $row['username'];
+                    $_SESSION['user_email'] = $row['email'];
                     $_SESSION['user_avatar'] = $row['avatar_path'];
                     $_SESSION['user_role'] = $row['role'];
 
@@ -342,7 +342,7 @@ class AuthService {
                     $sessStmt->execute([':sid' => $sessionId, ':uid' => $userId, ':ip' => $ipAddress, ':ua' => $userAgent, ':ip2' => $ipAddress, ':ua2' => $userAgent]);
                     // -------------------------------------------
 
-                    Logger::system("Inicio de sesión 2FA exitoso: {$row['correo']} (ID: $userId)", Logger::LEVEL_INFO);
+                    Logger::system("Inicio de sesión 2FA exitoso: {$row['email']} (ID: $userId)", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Inicio de sesión exitoso.'];
                 }
             }
@@ -384,8 +384,8 @@ class AuthService {
 
         try {
             // Verificar si el correo existe y si la cuenta no está eliminada
-            $stmtCheck = $this->conn->prepare("SELECT id, status FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1");
-            $stmtCheck->bindParam(':correo', $email);
+            $stmtCheck = $this->conn->prepare("SELECT id, status FROM " . $this->table_name . " WHERE email = :email LIMIT 0,1");
+            $stmtCheck->bindParam(':email', $email);
             $stmtCheck->execute();
 
             if ($stmtCheck->rowCount() === 0) {
@@ -459,22 +459,22 @@ class AuthService {
             $email = $row['identifier'];
             $codeId = $row['id'];
 
-            $userStmt = $this->conn->prepare("SELECT id, contrasena FROM " . $this->table_name . " WHERE correo = :correo");
-            $userStmt->execute([':correo' => $email]);
+            $userStmt = $this->conn->prepare("SELECT id, password FROM " . $this->table_name . " WHERE email = :email");
+            $userStmt->execute([':email' => $email]);
             $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
             $userId = $userData['id'];
-            $oldPasswordHash = $userData['contrasena'];
+            $oldPasswordHash = $userData['password'];
 
             $password_hash = password_hash($newPassword, PASSWORD_BCRYPT);
 
-            $updateQuery = "UPDATE " . $this->table_name . " SET contrasena = :contrasena WHERE correo = :correo";
+            $updateQuery = "UPDATE " . $this->table_name . " SET password = :password WHERE email = :email";
             $updStmt = $this->conn->prepare($updateQuery);
-            $updStmt->bindParam(':contrasena', $password_hash);
-            $updStmt->bindParam(':correo', $email);
+            $updStmt->bindParam(':password', $password_hash);
+            $updStmt->bindParam(':email', $email);
 
             if ($updStmt->execute()) {
                 
-                $logStmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, 'contrasena', :old_val, :new_val)");
+                $logStmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, 'password', :old_val, :new_val)");
                 $logStmt->execute([
                     ':user_id' => $userId, 
                     ':old_val' => $oldPasswordHash, 

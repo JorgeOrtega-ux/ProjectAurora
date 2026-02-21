@@ -17,7 +17,7 @@ $adminMenuDisplay = $isAdminRoute ? 'flex' : 'none';
 $settingsMenuDisplay = (!$isAdminRoute && $isSettings) ? 'flex' : 'none';
 $mainMenuDisplay = (!$isAdminRoute && !$isSettings) ? 'flex' : 'none';
 ?>
-<div class="component-module component-module--display-block component-module--size-m component-module--offset-s disabled" data-module="moduleSurface">
+<div class="component-module component-module--display-block component-module--size-m component-module--offset-s overflow-y disabled" data-module="moduleSurface">
     <div class="component-module-panel">
         <div class="component-module-panel-body">
             <div class="component-module-panel-top">

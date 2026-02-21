@@ -26,7 +26,7 @@ if (isset($_SESSION['user_id'])) {
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__icon-container component-card__icon-container--bordered">
-                            <span class="material-symbols-rounded" style="color: var(--color-success);">verified_user</span>
+                            <span class="material-symbols-rounded">verified_user</span>
                         </div>
                         <div class="component-card__text">
                             <h2 class="component-card__title">Tu cuenta está protegida</h2>
@@ -34,8 +34,8 @@ if (isset($_SESSION['user_id'])) {
                         </div>
                     </div>
                     
-                    <div class="component-card__actions actions-right w-100" style="justify-content: flex-end;">
-                        <button type="button" class="component-button" id="btn-disable-2fa" style="color: var(--action-danger); border-color: var(--action-danger);">
+                    <div class="component-card__actions actions-right">
+                        <button type="button" class="component-button" id="btn-disable-2fa">
                             Desactivar 2FA
                         </button>
                     </div>
@@ -52,7 +52,7 @@ if (isset($_SESSION['user_id'])) {
                             <h2 class="component-card__title">Códigos de recuperación</h2>
                             <p class="component-card__description">
                                 Estos códigos te permiten recuperar tu cuenta si pierdes acceso a tu dispositivo.<br>
-                                <span style="font-weight: 500; color: var(--text-primary);">
+                                <span>
                                     Códigos restantes: <span id="recovery-count-display">...</span>
                                 </span>
                             </p>
@@ -65,45 +65,45 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div id="regen-confirmation-area" class="disabled" style="flex-direction: column; width: 100%;">
+                <div id="regen-confirmation-area" class="disabled">
                     <hr class="component-divider">
                     <div class="component-group-item component-group-item--stacked">
-                        <div class="component-card__content w-100">
-                            <div class="component-card__text w-100">
+                        <div class="component-card__content">
+                            <div class="component-card__text">
                                 <h2 class="component-card__title">Confirmar contraseña</h2>
                                 <p class="component-card__description">Por razones de seguridad, ingresa tu contraseña para generar nuevos códigos.</p>
-                                <div class="component-input-wrapper mt-16">
+                                <div class="component-input-wrapper">
                                     <input type="password" class="component-text-input" id="regen-password-input" placeholder=" ">
                                     <label for="regen-password-input" class="component-label-floating">Contraseña</label>
                                 </div>
                             </div>
                         </div>
-                        <div class="component-card__actions actions-right w-100">
+                        <div class="component-card__actions actions-right">
                              <button type="button" class="component-button" id="btn-cancel-regen">Cancelar</button>
                             <button type="button" class="component-button primary" id="btn-submit-regen">Generar códigos</button>
                         </div>
                     </div>
                 </div>
 
-                <div id="new-codes-area" class="disabled" style="flex-direction: column; width: 100%;">
+                <div id="new-codes-area" class="disabled">
                     <hr class="component-divider">
                     <div class="component-group-item component-group-item--stacked">
-                        <div class="component-card__content w-100">
-                            <div class="component-card__text w-100">
-                                <h2 class="component-card__title" style="color: var(--color-success);">Nuevos códigos generados</h2>
+                        <div class="component-card__content">
+                            <div class="component-card__text">
+                                <h2 class="component-card__title">Nuevos códigos generados</h2>
                                 <p class="component-card__description">Guarda estos códigos en un lugar seguro. Tus códigos anteriores ya no son válidos.</p>
                             </div>
                         </div>
-                        <div id="new-recovery-codes-list" class="component-chip-grid w-100"></div>
+                        <div id="new-recovery-codes-list" class="component-chip-grid"></div>
                     </div>
                 </div>
 
             </div>
         <?php else: ?>
 
-            <div id="step-qr-container" class="w-100" style="display: flex; flex-direction: column; gap: 16px;">
+            <div id="step-qr-container">
                 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="1" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="1">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -118,8 +118,8 @@ if (isset($_SESSION['user_id'])) {
                     </div>
 
                     <div class="component-accordion-content">
-                        <hr class="component-divider" style="margin-bottom: 16px;"> 
-                        <div class="component-group-item component-group-item--stacked" style="padding: 0;">
+                        <hr class="component-divider"> 
+                        <div class="component-group-item component-group-item--stacked">
                             <div class="component-visual-group">
                                 <div class="component-visual-box box-grow">
                                     <ul class="component-step-list">
@@ -134,7 +134,7 @@ if (isset($_SESSION['user_id'])) {
                                     </ul>
                                 </div>
                                 <div class="component-visual-box box-qr">
-                                    <div id="qr-container" style="width: 100%; height: 100%;">
+                                    <div id="qr-container">
                                          <div class="component-spinner-button dark-spinner"></div>
                                     </div>
                                 </div>
@@ -143,7 +143,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="2" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="2">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -158,15 +158,15 @@ if (isset($_SESSION['user_id'])) {
                     </div>
 
                     <div class="component-accordion-content">
-                        <hr class="component-divider" style="margin-bottom: 16px;">
-                        <div class="component-group-item component-group-item--stacked" style="padding: 0;">
+                        <hr class="component-divider">
+                        <div class="component-group-item component-group-item--stacked">
                             <div class="component-card__content">
                                 <div class="component-card__text">
                                     <h2 class="component-card__title">Clave de configuración</h2>
                                     <p class="component-card__description">Copia esta clave y pégala en tu aplicación de autenticación.</p>
                                 </div>
                             </div>
-                            <div class="w-100 component-stage-form">
+                            <div class="component-stage-form">
                                 <div class="component-input-wrapper">
                                     <input type="text" id="manual-secret-input" class="component-text-input has-action" readonly placeholder="Cargando...">
                                     <label for="manual-secret-input" class="component-label-floating">Clave de configuración</label>
@@ -179,8 +179,8 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="3" style="margin-bottom: 0; border-radius: 12px; border: 1px solid var(--border-color);">
-                    <div class="component-group-item component-accordion-header" style="cursor: default;">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="3">
+                    <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
                                 <span class="material-symbols-rounded">lock_clock</span>
@@ -193,16 +193,16 @@ if (isset($_SESSION['user_id'])) {
                     </div>
 
                     <div class="component-accordion-content">
-                        <hr class="component-divider" style="margin-bottom: 16px;">
-                        <div class="component-group-item component-group-item--stacked" style="padding: 0;">
-                            <div class="w-100 component-stage-form">
+                        <hr class="component-divider">
+                        <div class="component-group-item component-group-item--stacked">
+                            <div class="component-stage-form">
                                 <div class="component-input-wrapper">
-                                    <input type="text" id="input-2fa-verify" class="component-text-input" placeholder=" " maxlength="6" style="font-family: monospace; letter-spacing: 4px; font-size: 18px; text-align: center; font-weight: bold;">
-                                    <label for="input-2fa-verify" class="component-label-floating" style="left: 12px; transform: translateY(-50%); width: 100%; text-align: center;">Código de 6 dígitos</label>
+                                    <input type="text" id="input-2fa-verify" class="component-text-input" placeholder=" " maxlength="6">
+                                    <label for="input-2fa-verify" class="component-label-floating">Código de 6 dígitos</label>
                                 </div>
                             </div>
-                            <div class="component-card__actions actions-right w-100">
-                                <button type="button" class="component-button primary w-100" id="btn-confirm-2fa">
+                            <div class="component-card__actions actions-right">
+                                <button type="button" class="component-button primary" id="btn-confirm-2fa">
                                     Verificar y activar
                                 </button>
                             </div>
@@ -212,23 +212,23 @@ if (isset($_SESSION['user_id'])) {
 
             </div>
 
-            <div class="component-card component-card--grouped disabled" id="step-success" style="margin-top: 16px;">
+            <div class="component-card component-card--grouped disabled" id="step-success">
                 <div class="component-group-item component-group-item--stacked">
                     
                     <div class="component-card__content">
-                        <div class="component-card__icon-container component-card__icon-container--bordered" style="background-color: var(--color-success-bg); border-color: var(--color-success);">
-                            <span class="material-symbols-rounded" style="color: var(--color-success);">check</span>
+                        <div class="component-card__icon-container component-card__icon-container--bordered">
+                            <span class="material-symbols-rounded">check</span>
                         </div>
                         <div class="component-card__text">
-                            <h2 class="component-card__title" style="color: var(--color-success);">¡2FA Activado!</h2>
+                            <h2 class="component-card__title">¡2FA Activado!</h2>
                             <p class="component-card__description">Tu cuenta ahora está protegida. A continuación, guarda tus códigos de recuperación de emergencia.</p>
                         </div>
                     </div>
 
-                    <div id="recovery-codes-list" class="component-chip-grid w-100"></div>
+                    <div id="recovery-codes-list" class="component-chip-grid"></div>
 
-                    <div class="component-card__actions w-100" style="margin-top: 16px;">
-                        <button type="button" class="component-button primary w-100" onclick="window.location.reload()">
+                    <div class="component-card__actions">
+                        <button type="button" class="component-button primary" onclick="window.location.reload()">
                             Finalizar configuración
                         </button>
                     </div>

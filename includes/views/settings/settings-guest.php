@@ -27,7 +27,7 @@ $checkedAttr = $prefs['open_links_new_tab'] ? 'checked' : '';
         <div class="component-header-card">
             <h1 class="component-page-title"><?= t('settings.guest.title') ?></h1>
             <p class="component-page-description"><?= t('settings.guest.desc') ?></p>
-            <div class="component-actions" style="justify-content: center; margin-top: 16px;">
+            <div class="component-actions">
                 <button class="component-button component-button--black component-button--rect-40" data-nav="/ProjectAurora/login">
                     <?= t('settings.guest.login') ?>
                 </button>
@@ -42,7 +42,7 @@ $checkedAttr = $prefs['open_links_new_tab'] ? 'checked' : '';
                         <p class="component-card__description"><?= t('settings.guest.lang_desc') ?></p>
                     </div>
                 </div>
-                <div class="component-card__actions w-100">
+                <div class="component-card__actions">
                     
                     <div class="component-dropdown" data-pref-key="language">
                         <div class="component-dropdown-trigger" data-action="toggle-dropdown">

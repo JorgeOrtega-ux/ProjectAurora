@@ -139,7 +139,7 @@ if (isset($_SESSION['user_id']) && isset($dbConnection)) {
         }
 
         // --- SINCRONIZACIÓN EN TIEMPO REAL: ACTUALIZAR DATOS DE USUARIO ---
-        $stmtUser = $dbConnection->prepare("SELECT nombre, correo, role, avatar_path, status FROM users WHERE id = :uid LIMIT 1");
+        $stmtUser = $dbConnection->prepare("SELECT username, email, role, avatar_path, status FROM users WHERE id = :uid LIMIT 1");
         $stmtUser->execute([':uid' => $userId]);
         $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
@@ -162,8 +162,8 @@ if (isset($_SESSION['user_id']) && isset($dbConnection)) {
         }
 
         // Mantener las sesiones actualizadas
-        $_SESSION['user_name'] = $userData['nombre'];
-        $_SESSION['user_email'] = $userData['correo'];
+        $_SESSION['user_name'] = $userData['username'];
+        $_SESSION['user_email'] = $userData['email'];
         $_SESSION['user_role'] = $userData['role'];
         $_SESSION['user_avatar'] = $userData['avatar_path'];
 

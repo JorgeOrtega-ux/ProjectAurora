@@ -90,7 +90,7 @@ class SettingsService {
 
     public function deleteAvatar($userId) {
         try {
-            $stmt = $this->conn->prepare("SELECT uuid, nombre, avatar_path FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT uuid, username, avatar_path FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -104,7 +104,7 @@ class SettingsService {
 
             $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
             $webDir = 'storage/profilePictures/default/';
-            $newWebPath = Utils::generateAndSaveAvatar($user['nombre'], $user['uuid'], $storageDir, $webDir);
+            $newWebPath = Utils::generateAndSaveAvatar($user['username'], $user['uuid'], $storageDir, $webDir);
 
             if (!$newWebPath) { 
                 Logger::system("No se pudo generar el avatar por defecto desde UI-Avatars para el usuario ID: $userId", Logger::LEVEL_WARNING);
@@ -126,19 +126,19 @@ class SettingsService {
     }
 
     public function updateField($userId, $field, $newValue) {
-        $allowedFields = ['nombre', 'correo'];
+        $allowedFields = ['username', 'email'];
         if (!in_array($field, $allowedFields)) { return ['success' => false, 'message' => 'Campo no válido.']; }
 
         $newValue = trim($newValue);
         if (empty($newValue)) { return ['success' => false, 'message' => 'El valor no puede estar vacío.']; }
 
         try {
-            if ($field === 'correo') {
+            if ($field === 'email') {
                 if (!Utils::validateEmail($newValue)) {
                     return ['success' => false, 'message' => 'Formato de correo inválido o dominio no permitido.'];
                 }
-                $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo AND id != :id");
-                $checkStmt->execute([':correo' => $newValue, ':id' => $userId]);
+                $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
+                $checkStmt->execute([':email' => $newValue, ':id' => $userId]);
                 if ($checkStmt->rowCount() > 0) { return ['success' => false, 'message' => 'El correo ya está en uso.']; }
             }
 
@@ -148,18 +148,18 @@ class SettingsService {
 
             if ($oldValue === $newValue) { return ['success' => true, 'message' => 'No hubo cambios.', 'newValue' => $newValue]; }
 
-            if ($field === 'nombre') {
-                if ($this->countRecentChanges($userId, 'nombre', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_username']; }
+            if ($field === 'username') {
+                if ($this->countRecentChanges($userId, 'username', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_username']; }
                 if (!Utils::validateUsername($newValue)) { return ['success' => false, 'message' => 'js.auth.err_user_length']; }
-            } else if ($field === 'correo') {
-                if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+            } else if ($field === 'email') {
+                if ($this->countRecentChanges($userId, 'email', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
             }
 
             $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
                 $this->logChange($userId, $field, $oldValue, $newValue);
-                if ($field === 'nombre') { $_SESSION['user_name'] = $newValue; }
-                else if ($field === 'correo') { $_SESSION['user_email'] = $newValue; }
+                if ($field === 'username') { $_SESSION['user_name'] = $newValue; }
+                else if ($field === 'email') { $_SESSION['user_email'] = $newValue; }
                 
                 Logger::system("Usuario ID: $userId actualizó exitosamente el campo '$field'", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Actualizado correctamente.', 'newValue' => $newValue];
@@ -183,20 +183,20 @@ class SettingsService {
         }
 
         try {
-            $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo");
-            $checkStmt->execute([':correo' => $newEmail]);
+            $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE email = :email");
+            $checkStmt->execute([':email' => $newEmail]);
             if ($checkStmt->rowCount() > 0) {
                 Utils::recordActionAttempt($this->conn, 'request_email_change', 5, 5);
                 return ['success' => false, 'message' => 'El correo ya está en uso.'];
             }
 
-            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+            if ($this->countRecentChanges($userId, 'email', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
 
-            $userStmt = $this->conn->prepare("SELECT correo, nombre FROM users WHERE id = :id");
+            $userStmt = $this->conn->prepare("SELECT email, username FROM users WHERE id = :id");
             $userStmt->execute([':id' => $userId]);
             $user = $userStmt->fetch(PDO::FETCH_ASSOC);
-            $currentEmail = $user['correo'];
-            $userName = $user['nombre'];
+            $currentEmail = $user['email'];
+            $userName = $user['username'];
 
             if ($currentEmail === $newEmail) { return ['success' => false, 'message' => 'El nuevo correo no puede ser el actual.']; }
 
@@ -247,15 +247,15 @@ class SettingsService {
             $newEmail = $payload['new_email'];
             $codeId = $row['id'];
 
-            $userStmt = $this->conn->prepare("SELECT correo FROM users WHERE id = :id");
+            $userStmt = $this->conn->prepare("SELECT email FROM users WHERE id = :id");
             $userStmt->execute([':id' => $userId]);
             $oldEmail = $userStmt->fetchColumn();
 
-            if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
+            if ($this->countRecentChanges($userId, 'email', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
 
-            $updStmt = $this->conn->prepare("UPDATE users SET correo = :new_val WHERE id = :id");
+            $updStmt = $this->conn->prepare("UPDATE users SET email = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newEmail, ':id' => $userId])) {
-                $this->logChange($userId, 'correo', $oldEmail, $newEmail);
+                $this->logChange($userId, 'email', $oldEmail, $newEmail);
                 $_SESSION['user_email'] = $newEmail;
                 
                 $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
@@ -288,7 +288,7 @@ class SettingsService {
     public function verifyPassword($userId, $password) {
         if (!Utils::checkRateLimit($this->conn, 'verify_password', 5)) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
         try {
-            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
@@ -308,7 +308,7 @@ class SettingsService {
         if (!Utils::checkRateLimit($this->conn, 'update_password', 5)) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
 
         try {
-            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
@@ -321,9 +321,9 @@ class SettingsService {
 
             $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
             
-            $updStmt = $this->conn->prepare("UPDATE users SET contrasena = :new_hash WHERE id = :id");
+            $updStmt = $this->conn->prepare("UPDATE users SET password = :new_hash WHERE id = :id");
             if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
-                $this->logChange($userId, 'contrasena', $hash, $newHash);
+                $this->logChange($userId, 'password', $hash, $newHash);
                 Utils::resetAttempts($this->conn, 'update_password');
                 Logger::system("Usuario ID: $userId actualizó su contraseña con éxito", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
@@ -373,7 +373,7 @@ class SettingsService {
 
     public function deleteAccount($userId, $password) {
         try {
-            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
@@ -402,7 +402,7 @@ class SettingsService {
         Logger::system("Iniciando proceso 2FA para usuario ID: $userId", Logger::LEVEL_DEBUG);
 
         try {
-            $stmt = $this->conn->prepare("SELECT correo, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT email, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -431,7 +431,7 @@ class SettingsService {
                 $upd->execute([':sec' => $secret, ':id' => $userId]);
             }
 
-            $qrUrl = $tfa->getQRCodeImageAsDataUri('Project Aurora (' . $user['correo'] . ')', $secret);
+            $qrUrl = $tfa->getQRCodeImageAsDataUri('Project Aurora (' . $user['email'] . ')', $secret);
 
             return [
                 'success' => true,
@@ -473,7 +473,7 @@ class SettingsService {
 
     public function disable2FA($userId, $password) {
         try {
-            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
@@ -494,7 +494,7 @@ class SettingsService {
 
     public function regenerate2FACodes($userId, $password) {
         try {
-            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 

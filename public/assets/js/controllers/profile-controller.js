@@ -547,7 +547,7 @@ export class ProfileController {
         }
 
         const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
-        const fieldMap = { 'username': 'nombre' }; 
+        const fieldMap = { 'username': 'username' }; 
         const apiField = fieldMap[target];
 
         const originalText = btnSave.textContent;

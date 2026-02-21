@@ -21,17 +21,17 @@
                 </div>
                 
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" id="btn-revoke-all" style="color: var(--action-danger); border-color: var(--action-danger);">
+                    <button type="button" class="component-button" id="btn-revoke-all">
                         Cerrar demás sesiones
                     </button>
                 </div>
             </div>
         </div>
 
-        <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; margin-bottom: -4px; padding-left: 8px;">Sesiones activas</h3>
+        <h3>Sesiones activas</h3>
 
         <div class="component-card--grouped" id="devices-list-container">
-            <div style="padding: 32px; display: flex; justify-content: center; align-items: center;">
+            <div>
                 <div class="component-spinner-button dark-spinner"></div>
             </div>
         </div>

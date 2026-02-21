@@ -16,17 +16,17 @@ DROP TABLE IF EXISTS rate_limits;
 -- 4. Crear la tabla 'users'
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid CHAR(36) NOT NULL UNIQUE COMMENT 'Identificador único para el sistema',
-    nombre VARCHAR(100) NOT NULL,
-    correo VARCHAR(150) NOT NULL UNIQUE,
-    contrasena VARCHAR(255) NOT NULL,
-    role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user' COMMENT 'Rol del usuario para permisos y UI',
-    status ENUM('active', 'suspended', 'deleted') DEFAULT 'active' COMMENT 'Estado actual de la cuenta',
-    avatar_path VARCHAR(255) DEFAULT NULL COMMENT 'Ruta de la imagen guardada en storage',
-    two_factor_secret VARCHAR(255) DEFAULT NULL COMMENT 'Clave secreta para 2FA',
-    two_factor_enabled BOOLEAN DEFAULT FALSE COMMENT 'Estado de 2FA',
-    two_factor_recovery_codes TEXT DEFAULT NULL COMMENT 'Códigos de recuperación en JSON',
-    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    uuid CHAR(36) NOT NULL UNIQUE COMMENT 'Unique identifier for the system',
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user' COMMENT 'User role for permissions and UI',
+    status ENUM('active', 'suspended', 'deleted') DEFAULT 'active' COMMENT 'Current account status',
+    avatar_path VARCHAR(255) DEFAULT NULL COMMENT 'Path to the image saved in storage',
+    two_factor_secret VARCHAR(255) DEFAULT NULL COMMENT 'Secret key for 2FA',
+    two_factor_enabled BOOLEAN DEFAULT FALSE COMMENT '2FA status',
+    two_factor_recovery_codes TEXT DEFAULT NULL COMMENT 'Recovery codes in JSON',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. Crear la tabla 'verification_codes'
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS verification_codes (
 CREATE TABLE IF NOT EXISTS rate_limits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ip_address VARCHAR(45) NOT NULL,
-    action VARCHAR(50) NOT NULL COMMENT 'Ej: login, forgot_password',
+    action VARCHAR(50) NOT NULL COMMENT 'e.g., login, forgot_password',
     attempts INT DEFAULT 1,
     last_attempt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     blocked_until DATETIME DEFAULT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 CREATE TABLE IF NOT EXISTS user_changes_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    modified_field VARCHAR(50) NOT NULL COMMENT 'e.g., avatar, nombre, correo, contrasena',
+    modified_field VARCHAR(50) NOT NULL COMMENT 'e.g., avatar, username, email, password',
     old_value TEXT DEFAULT NULL,
     new_value TEXT DEFAULT NULL,
     changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. Crear la tabla 'user_sessions' (NUEVA TABLA DE DISPOSITIVOS)
+-- 9. Crear la tabla 'user_sessions'
 CREATE TABLE IF NOT EXISTS user_sessions (
     session_id VARCHAR(128) PRIMARY KEY,
     user_id INT NOT NULL,
@@ -96,10 +96,10 @@ CREATE TABLE IF NOT EXISTS server_config (
 
 -- Insertar valores de configuración por defecto
 INSERT IGNORE INTO server_config (setting_key, setting_value, description) VALUES
-('min_password_length', '12', 'Longitud mínima de la contraseña'),
-('max_password_length', '64', 'Longitud máxima de la contraseña'),
-('min_username_length', '3', 'Longitud mínima del nombre de usuario'),
-('max_username_length', '32', 'Longitud máxima del nombre de usuario'),
-('min_email_local_length', '4', 'Longitud mínima del correo antes del @'),
-('max_email_local_length', '64', 'Longitud máxima del correo antes del @'),
-('allowed_email_domains', 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com', 'Dominios permitidos');
+('min_password_length', '12', 'Minimum password length'),
+('max_password_length', '64', 'Maximum password length'),
+('min_username_length', '3', 'Minimum username length'),
+('max_username_length', '32', 'Maximum username length'),
+('min_email_local_length', '4', 'Minimum email length before @'),
+('max_email_local_length', '64', 'Maximum email length before @'),
+('allowed_email_domains', 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com', 'Allowed email domains');
