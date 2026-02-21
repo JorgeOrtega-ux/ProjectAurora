@@ -8,6 +8,30 @@ $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !import
 $appUrl = rtrim(getenv('APP_URL') ?: '/ProjectAurora', '/');
 ?>
 
+<script>
+    // Pasamos las traducciones exactas del backend al cliente para el Router SPA
+    // Usamos el namespace "title." para separar los nombres de las pestañas de los de la UI.
+    window.AppRouteTitles = {
+        '/': "<?= htmlspecialchars(t('title.home'), ENT_QUOTES, 'UTF-8') ?>",
+        '/explore': "<?= htmlspecialchars(t('title.explore'), ENT_QUOTES, 'UTF-8') ?>",
+        '/login': "<?= htmlspecialchars(t('title.login'), ENT_QUOTES, 'UTF-8') ?>",
+        '/register': "<?= htmlspecialchars(t('title.register'), ENT_QUOTES, 'UTF-8') ?>",
+        '/forgot-password': "<?= htmlspecialchars(t('title.forgot'), ENT_QUOTES, 'UTF-8') ?>",
+        '/reset-password': "<?= htmlspecialchars(t('title.reset'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/your-account': "<?= htmlspecialchars(t('title.profile'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/security': "<?= htmlspecialchars(t('title.security'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/accessibility': "<?= htmlspecialchars(t('title.accessibility'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/devices': "<?= htmlspecialchars(t('title.devices'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/delete-account': "<?= htmlspecialchars(t('title.delete_account'), ENT_QUOTES, 'UTF-8') ?>",
+        '/settings/guest': "<?= htmlspecialchars(t('title.guest'), ENT_QUOTES, 'UTF-8') ?>",
+        '/admin/dashboard': "<?= htmlspecialchars(t('title.admin_dashboard'), ENT_QUOTES, 'UTF-8') ?>",
+        '/admin/users': "<?= htmlspecialchars(t('title.admin_users'), ENT_QUOTES, 'UTF-8') ?>",
+        '/admin/backups': "<?= htmlspecialchars(t('title.admin_backups'), ENT_QUOTES, 'UTF-8') ?>",
+        '/admin/server': "<?= htmlspecialchars(t('title.admin_server'), ENT_QUOTES, 'UTF-8') ?>"
+    };
+    window.AppName = "ProjectAurora";
+</script>
+
 <div class="header">
     <div class="header-left">
         <div class="component-actions">

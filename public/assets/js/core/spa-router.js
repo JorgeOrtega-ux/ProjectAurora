@@ -7,6 +7,9 @@ export class SpaRouter {
     }
 
     init() {
+        // Actualizar el título inicialmente al cargar la página por primera vez
+        this.updateDocumentTitle(window.location.pathname);
+
         // Escuchar retroceso/avance del navegador
         window.addEventListener('popstate', (e) => {
             const url = window.location.pathname;
@@ -84,6 +87,10 @@ export class SpaRouter {
                 const html = await response.text();
                 this.render(html);
                 this.highlightCurrentRoute();
+                
+                // Actualizar dinámicamente el title de la pestaña
+                this.updateDocumentTitle(url);
+                
                 window.dispatchEvent(new CustomEvent('viewLoaded', { detail: { url } }));
             } else {
                 this.render('<div class="view-content"><h1>Error</h1></div>');
@@ -137,6 +144,39 @@ export class SpaRouter {
             mainAppMenu.style.display = 'flex';
             settingsMenu.style.display = 'none';
             if (adminMenu) adminMenu.style.display = 'none';
+        }
+    }
+
+    updateDocumentTitle(url) {
+        // Verificar si las traducciones han sido inyectadas desde header.php
+        if (!window.AppRouteTitles || !window.AppName) return;
+        
+        // Limpiar la URL de la ruta base, query params o hashes
+        let path = url.replace(this.basePath, '').split('?')[0].split('#')[0];
+        if (path === '') path = '/';
+
+        let translatedSection = null;
+
+        // Comprobación exacta
+        if (window.AppRouteTitles[path]) {
+            translatedSection = window.AppRouteTitles[path];
+        } else {
+            // Comprobación parcial por si la ruta tiene IDs adicionales (ej. /admin/users/edit/123)
+            // Se ordenan las rutas por longitud para emparejar la más específica primero.
+            const routes = Object.keys(window.AppRouteTitles).sort((a, b) => b.length - a.length);
+            for (const route of routes) {
+                if (route !== '/' && path.startsWith(route)) {
+                    translatedSection = window.AppRouteTitles[route];
+                    break;
+                }
+            }
+        }
+
+        // Si se encuentra una traducción, actualizar el title "Sección - App"
+        if (translatedSection) {
+            document.title = `${translatedSection} - ${window.AppName}`;
+        } else {
+            document.title = window.AppName;
         }
     }
 
