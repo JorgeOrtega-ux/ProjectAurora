@@ -437,6 +437,10 @@
     --token-bracket: var(--sl-color-blue-800);        /* #0451a5 */
     --token-date: var(--sl-color-emerald-700);        /* #098658 */
     --token-error: var(--sl-color-red-600);           /* #cd3131 */
+
+    /* SCROLLBAR CUSTOM COLORS (LIGHT) */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: var(--sl-color-neutral-300);
 }
 
 /* ========================================================================
@@ -486,6 +490,10 @@
         /* Shadows y Bordes Dinámicos para modo oscuro */
         --shadow-card: none;
         --border-dynamic: 1px solid #ffffff20;
+
+        /* SCROLLBAR CUSTOM COLORS (DARK) */
+        --scrollbar-track: transparent;
+        --scrollbar-thumb: var(--sl-color-gray-600);
     }
 }
 
@@ -533,4 +541,8 @@ html.dark-theme {
     /* Shadows y Bordes Dinámicos para modo oscuro */
     --shadow-card: none;
     --border-dynamic: 1px solid #ffffff20;
+
+    /* SCROLLBAR CUSTOM COLORS (DARK) */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: var(--sl-color-gray-600);
 }

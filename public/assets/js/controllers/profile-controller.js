@@ -605,13 +605,55 @@ export class ProfileController {
         module.classList.add('disabled');
     }
 
-    handleFilter(searchInput) {
+handleFilter(searchInput) {
         const module = searchInput.closest('.component-module');
         const term = searchInput.value.toLowerCase().trim();
+        const listContainer = module.querySelector('.component-menu-list');
+        
+        let hasMatch = false;
+        let activeElement = null;
+
         module.querySelectorAll('.component-menu-link').forEach(link => {
             const label = link.dataset.label.toLowerCase();
-            link.style.display = label.includes(term) ? 'flex' : 'none';
+            const isActive = link.classList.contains('active');
+            
+            if (isActive) {
+                activeElement = link;
+            }
+
+            if (label.includes(term)) {
+                link.style.display = 'flex';
+                hasMatch = true;
+            } else {
+                link.style.display = 'none';
+            }
         });
+
+        // Remover mensajes anteriores de la búsqueda
+        const oldMsg = listContainer.querySelector('.dropdown-no-results-container');
+        if (oldMsg) oldMsg.remove();
+
+        // Lógica de "Sin resultados"
+        if (!hasMatch && term !== '') {
+            // Forzar a mostrar siempre el elemento activo
+            if (activeElement) {
+                activeElement.style.display = 'flex';
+            }
+            
+            // Sanitizar el término para evitar ataques XSS
+            const termEscaped = term.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // Inyectar divisor y texto indicando que no hay resultados
+            const noResultsHtml = `
+                <div class="dropdown-no-results-container" style="width: 100%; display: flex; flex-direction: column;">
+                    <hr class="component-divider" style="margin: 4px 0; flex-shrink: 0;">
+                    <div style="padding: 12px 16px; text-align: center; font-size: 14px; color: var(--text-secondary);">
+                        No se encontraron resultados para "<b>${termEscaped}</b>"
+                    </div>
+                </div>
+            `;
+            listContainer.insertAdjacentHTML('beforeend', noResultsHtml);
+        }
     }
 
     closeAllDropdowns(exceptThisOne = null) {

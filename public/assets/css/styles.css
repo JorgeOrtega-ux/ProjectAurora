@@ -235,7 +235,22 @@ body {
     height: 100%;
 }
 
+/* Busca al final de tu styles.css y sustituye la clase .overflow-y existente por esto: */
 .overflow-y {
     overflow-y: auto;
     scrollbar-width: thin; /* Para Firefox: lo hace delgado automáticamente */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); /* Para Firefox */
+}
+
+/* Scrollbar webkit adaptativo al modo oscuro */
+.overflow-y::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.overflow-y::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+.overflow-y::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 10px;
 }
