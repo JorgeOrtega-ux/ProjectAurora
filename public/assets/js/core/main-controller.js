@@ -28,29 +28,29 @@ export class MainController {
         this.handleScrollShadow();
         this.handleModules();
 
+        // Cuando la SPA cargue una nueva vista, reinicializamos los componentes necesarios
         window.addEventListener('viewLoaded', () => {
             this.initBottomSheets();
+            this.handleScrollShadow(); // Asegura que el scroll funcione en la nueva vista
         });
     }
 
     handleModules() {
-        const triggers = document.querySelectorAll('[data-action^="toggle"]');
-
-        triggers.forEach(trigger => {
-            if (trigger.dataset.action === 'toggle-dropdown') return; 
-
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
+        // SOLUCIÓN: Usamos "Delegación de Eventos" en el documento entero.
+        // Esto captura los clics incluso en elementos que la SPA inyectó dinámicamente.
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('[data-action^="toggle"]');
+            
+            // 1. Manejo de clics en los botones que abren/cierran módulos
+            if (trigger && trigger.dataset.action !== 'toggle-dropdown') {
                 const action = trigger.dataset.action;
                 
-                // --- NUEVA LÓGICA DINÁMICA Y ESCALABLE ---
                 let targetModuleName = null;
                 
-                // Si usa el nuevo estándar dinámico (Ej: data-target="moduleMiFiltro")
                 if (action === 'toggleModule' && trigger.dataset.target) {
                     targetModuleName = trigger.dataset.target;
                 } else {
-                    // Soporte legacy para los menús que ya existen en el header
+                    // Soporte legacy para los menús
                     const actionMap = {
                         'toggleModuleSurface': 'moduleSurface',
                         'toggleModuleMainOptions': 'moduleMainOptions'
@@ -61,10 +61,12 @@ export class MainController {
                 if (targetModuleName) {
                     this.toggleModule(targetModuleName);
                 }
-            });
-        });
+                
+                // Retornamos para evitar que la lógica de "clic fuera" se evalúe inmediatamente
+                return;
+            }
 
-        document.addEventListener('click', (e) => {
+            // 2. Manejo de "clic fuera" para cerrar módulos abiertos
             const openModules = document.querySelectorAll('.component-module:not(.disabled)');
             openModules.forEach(module => {
                 const panel = module.querySelector('.component-module-panel');
@@ -219,7 +221,10 @@ export class MainController {
     handleScrollShadow() {
         const scrollableArea = document.querySelector('.general-content-scrolleable');
         const topSection = document.querySelector('.general-content-top');
-        if (scrollableArea && topSection) {
+        
+        // Evitamos vincular múltiples veces el evento en caso de re-renderizado
+        if (scrollableArea && topSection && !scrollableArea.dataset.scrollShadowInit) {
+            scrollableArea.dataset.scrollShadowInit = "true";
             scrollableArea.addEventListener('scroll', () => {
                 if (scrollableArea.scrollTop > 0) {
                     topSection.classList.add('shadow');
