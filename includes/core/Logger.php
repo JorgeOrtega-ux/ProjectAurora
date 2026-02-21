@@ -2,25 +2,14 @@
 // includes/core/Logger.php
 namespace App\Core;
 
+use App\Core\Utils;
+
 class Logger {
     public const LEVEL_INFO = 'INFO';
     public const LEVEL_WARNING = 'WARNING';
     public const LEVEL_ERROR = 'ERROR';
     public const LEVEL_DEBUG = 'DEBUG';
     public const LEVEL_CRITICAL = 'CRITICAL';
-
-    /**
-     * Obtiene la IP del cliente para adjuntarla al log.
-     */
-    private static function getClientIp() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } else {
-            return $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
-        }
-    }
 
     /**
      * Motor principal de escritura de logs.
@@ -38,7 +27,9 @@ class Logger {
         $date = date('Y-m-d');
         $file = $categoryDir . '/' . $date . '.log';
         $time = date('Y-m-d H:i:s');
-        $ip = self::getClientIp();
+        
+        // Obtener la IP usando la función centralizada en Utils
+        $ip = Utils::getClientIP();
 
         // Procesar el contexto o Stacktrace
         $contextStr = '';

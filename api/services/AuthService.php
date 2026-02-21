@@ -5,8 +5,6 @@ namespace App\Api\Services;
 use PDO;
 use App\Core\Utils;
 use App\Core\Logger;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 class AuthService {
     private $conn;
@@ -14,155 +12,6 @@ class AuthService {
 
     public function __construct($db) {
         $this->conn = $db;
-    }
-
-    private function getUserIP() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } else {
-            return $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
-        }
-    }
-
-    private function checkRateLimit($action) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "SELECT attempts, blocked_until, (blocked_until > NOW()) as is_blocked FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($result) {
-                if ($result['is_blocked']) {
-                    Logger::system("Rate limit bloqueó acción '$action' para IP $ip", Logger::LEVEL_WARNING);
-                    return false; 
-                }
-                if (!$result['is_blocked'] && $result['blocked_until'] !== null) {
-                    $this->resetAttempts($action);
-                }
-            }
-            return true;
-        } catch (\Throwable $e) {
-            Logger::database("Error al verificar rate limit para la acción: $action", Logger::LEVEL_ERROR, $e);
-            return true; // Failsafe para no bloquear a usuarios legítimos si la BD de rate limit falla
-        }
-    }
-
-    private function recordFailedAttempt($action) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "SELECT attempts FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($result) {
-                $attempts = $result['attempts'] + 1;
-                $blocked_until = ($attempts >= 5) ? date('Y-m-d H:i:s', strtotime('+15 minutes')) : null;
-                
-                $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
-                $updStmt = $this->conn->prepare($update);
-                $updStmt->execute([
-                    ':attempts' => $attempts, 
-                    ':blocked_until' => $blocked_until, 
-                    ':ip' => $ip, 
-                    ':action' => $action
-                ]);
-
-                if ($blocked_until) {
-                    Logger::system("IP $ip bloqueada temporalmente por intentos fallidos en la acción '$action'", Logger::LEVEL_WARNING);
-                }
-            } else {
-                $insert = "INSERT INTO rate_limits (ip_address, action, attempts, last_attempt) VALUES (:ip, :action, 1, NOW())";
-                $insStmt = $this->conn->prepare($insert);
-                $insStmt->execute([':ip' => $ip, ':action' => $action]);
-            }
-        } catch (\Throwable $e) {
-            Logger::database("Error al registrar intento fallido en la tabla rate_limits", Logger::LEVEL_ERROR, $e);
-        }
-    }
-
-    private function resetAttempts($action) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-        } catch (\Throwable $e) {
-            Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
-        }
-    }
-
-    private function sendEmail($to, $subject, $bodyHtml) {
-        $mail = new PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = getenv('SMTP_USER');
-            $mail->Password   = getenv('SMTP_PASS');
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = getenv('SMTP_PORT') ?: 465;
-
-            $mail->setFrom(getenv('SMTP_USER'), 'Project Aurora');
-            $mail->addAddress($to);
-
-            $mail->isHTML(true);
-            $mail->Subject = mb_encode_mimeheader($subject, "UTF-8");
-            $mail->Body    = $bodyHtml;
-            $mail->CharSet = 'UTF-8';
-
-            $mail->send();
-            return true;
-        } catch (Exception $e) {
-            Logger::system("Error al enviar email SMTP a $to. Asunto: $subject", Logger::LEVEL_ERROR, $e);
-            return false;
-        }
-    }
-
-    // Validador nativo de TOTP
-    private function verifyTOTP($secret, $code) {
-        if (empty($secret) || empty($code)) return false;
-        
-        $base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $base32charsFlipped = array_flip(str_split($base32chars));
-        $secret = strtoupper($secret);
-        
-        $paddingCharCount = substr_count($secret, '=');
-        $allowedValues = array(6, 4, 3, 1, 0);
-        if (!in_array($paddingCharCount, $allowedValues)) return false;
-        
-        $secret = str_replace('=', '', $secret);
-        $secret = str_split($secret);
-        $binaryString = "";
-        
-        foreach ($secret as $char) {
-            if (!isset($base32charsFlipped[$char])) return false;
-            $binaryString .= str_pad(base_convert($base32charsFlipped[$char], 10, 2), 5, '0', STR_PAD_LEFT);
-        }
-        
-        $binaryArray = str_split($binaryString, 8);
-        $decodedSecret = "";
-        foreach ($binaryArray as $bin) {
-            $decodedSecret .= chr(bindec($bin));
-        }
-        
-        $tm = floor(time() / 30);
-        for ($i = -1; $i <= 1; $i++) {
-            $time = pack('N*', 0) . pack('N*', $tm + $i);
-            $hash = hash_hmac('sha1', $time, $decodedSecret, true);
-            $offset = ord(substr($hash, -1)) & 0x0F;
-            
-            $hashPart = substr($hash, $offset, 4);
-            $value = unpack('N', $hashPart);
-            $value = $value[1] & 0x7FFFFFFF;
-            
-            $calculatedCode = str_pad($value % 1000000, 6, '0', STR_PAD_LEFT);
-            if ($calculatedCode === $code) return true;
-        }
-        return false;
     }
 
     public function checkEmail($email) {
@@ -218,7 +67,7 @@ class AuthService {
                             <p>Este código expirará en 15 minutos.</p>
                          </div>";
 
-                if ($this->sendEmail($data->email, 'Código de Activación - Project Aurora', $html)) {
+                if (Utils::sendEmail($data->email, 'Código de Activación - Project Aurora', $html)) {
                     Logger::system("Código de activación enviado correctamente al correo: {$data->email}", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Código enviado a tu correo.'];
                 }
@@ -322,7 +171,7 @@ class AuthService {
     }
 
     public function login($email, $password) {
-        if (!$this->checkRateLimit('login')) {
+        if (!Utils::checkRateLimit($this->conn, 'login', 15, 5)) {
             return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente. Intenta de nuevo en 15 minutos.'];
         }
 
@@ -353,7 +202,7 @@ class AuthService {
                     }
                     // -----------------------
 
-                    $this->resetAttempts('login');
+                    Utils::resetAttempts($this->conn, 'login');
 
                     $_SESSION['user_id'] = $row['id'];
                     $_SESSION['user_uuid'] = $row['uuid'];
@@ -381,7 +230,7 @@ class AuthService {
                 }
             }
             
-            $this->recordFailedAttempt('login');
+            Utils::recordActionAttempt($this->conn, 'login', 5, 15);
             Logger::system("Intento de inicio de sesión fallido para el correo: $email", Logger::LEVEL_WARNING);
             return ['success' => false, 'message' => 'Correo o contraseña incorrectos.'];
             
@@ -392,7 +241,7 @@ class AuthService {
     }
 
     public function verify2FACode($token, $code) {
-        if (!$this->checkRateLimit('login')) {
+        if (!Utils::checkRateLimit($this->conn, 'login', 15, 5)) {
             return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente.'];
         }
 
@@ -417,7 +266,7 @@ class AuthService {
 
                 // 1. Verificamos si es un código temporal de la App Authenticator (TOTP)
                 if (strlen($code) === 6 && is_numeric($code)) {
-                    $isValid = $this->verifyTOTP($row['two_factor_secret'], $code);
+                    $isValid = Utils::verifyTOTP($row['two_factor_secret'], $code);
                 }
                 
                 // 2. Si falló el TOTP, validamos contra los códigos de respaldo (Backup Codes)
@@ -435,7 +284,7 @@ class AuthService {
                 }
 
                 if ($isValid) {
-                    $this->resetAttempts('login');
+                    Utils::resetAttempts($this->conn, 'login');
                     
                     $_SESSION['user_id'] = $row['id'];
                     $_SESSION['user_uuid'] = $row['uuid'];
@@ -457,7 +306,7 @@ class AuthService {
                 }
             }
             
-            $this->recordFailedAttempt('login');
+            Utils::recordActionAttempt($this->conn, 'login', 5, 15);
             Logger::system("Código 2FA incorrecto ingresado para el usuario ID: $userId", Logger::LEVEL_WARNING);
             return ['success' => false, 'message' => 'Código de autenticación incorrecto.'];
 
@@ -475,17 +324,17 @@ class AuthService {
     }
 
     public function requestPasswordReset($email) {
-        if (!$this->checkRateLimit('forgot_password')) {
+        if (!Utils::checkRateLimit($this->conn, 'forgot_password', 15, 5)) {
             return ['success' => false, 'message' => 'Demasiadas solicitudes. Por favor, intenta de nuevo en 15 minutos.'];
         }
 
         try {
             if (!$this->checkEmail($email)) {
-                $this->recordFailedAttempt('forgot_password');
+                Utils::recordActionAttempt($this->conn, 'forgot_password', 5, 15);
                 return ['success' => false, 'message' => 'El correo proporcionado no está registrado en el sistema.'];
             }
 
-            $this->resetAttempts('forgot_password');
+            Utils::resetAttempts($this->conn, 'forgot_password');
 
             $token = bin2hex(random_bytes(32)); 
             $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour')); 
@@ -517,7 +366,7 @@ class AuthService {
                             <p style='font-size: 12px; color: #666; margin-top: 24px;'>Si no solicitaste este cambio, ignora este correo. El enlace expirará en 1 hora.</p>
                          </div>";
 
-                if ($this->sendEmail($email, 'Recuperación de Contraseña - Project Aurora', $html)) {
+                if (Utils::sendEmail($email, 'Recuperación de Contraseña - Project Aurora', $html)) {
                     Logger::system("Enlace de recuperación de contraseña enviado a: $email", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Enlace de recuperación enviado.'];
                 }

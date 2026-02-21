@@ -5,8 +5,6 @@ namespace App\Api\Services;
 use PDO;
 use App\Core\Utils;
 use App\Core\Logger;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 use RobThree\Auth\TwoFactorAuth;
 
 class SettingsService {
@@ -46,106 +44,6 @@ class SettingsService {
     }
 
     // ==========================================
-    // SISTEMA ANTI-SPAM (RATE LIMITING)
-    // ==========================================
-
-    private function getUserIP() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) { return $_SERVER['HTTP_CLIENT_IP']; } 
-        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) { return $_SERVER['HTTP_X_FORWARDED_FOR']; } 
-        else { return $_SERVER['REMOTE_ADDR']; }
-    }
-
-    private function checkRateLimit($action) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "SELECT attempts, blocked_until, last_attempt, (blocked_until > NOW()) as is_blocked FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($result) {
-                if ($result['is_blocked']) { 
-                    Logger::system("Rate limit bloqueó acción '$action' para IP $ip", Logger::LEVEL_WARNING);
-                    return false; 
-                }
-                if ($result['blocked_until'] !== null || strtotime($result['last_attempt']) < strtotime('-5 minutes')) {
-                    $this->resetAttempts($action);
-                }
-            }
-            return true;
-        } catch (\Throwable $e) {
-            Logger::database("Error al verificar rate limit para la acción: $action", Logger::LEVEL_ERROR, $e);
-            return true;
-        }
-    }
-
-    private function recordActionAttempt($action, $maxAttempts = 15, $blockMinutes = 5) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "SELECT attempts FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($result) {
-                $attempts = $result['attempts'] + 1;
-                $blocked_until = ($attempts >= $maxAttempts) ? date('Y-m-d H:i:s', strtotime("+$blockMinutes minutes")) : null;
-                $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
-                $updStmt = $this->conn->prepare($update);
-                $updStmt->execute([':attempts' => $attempts, ':blocked_until' => $blocked_until, ':ip' => $ip, ':action' => $action]);
-                
-                if ($blocked_until) {
-                    Logger::system("IP $ip bloqueada temporalmente por intentos fallidos en la acción '$action'", Logger::LEVEL_WARNING);
-                }
-            } else {
-                $insert = "INSERT INTO rate_limits (ip_address, action, attempts, last_attempt) VALUES (:ip, :action, 1, NOW())";
-                $insStmt = $this->conn->prepare($insert);
-                $insStmt->execute([':ip' => $ip, ':action' => $action]);
-            }
-        } catch (\Throwable $e) {
-            Logger::database("Error al registrar intento en la tabla rate_limits", Logger::LEVEL_ERROR, $e);
-        }
-    }
-
-    private function resetAttempts($action) {
-        try {
-            $ip = $this->getUserIP();
-            $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([':ip' => $ip, ':action' => $action]);
-        } catch (\Throwable $e) {
-            Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
-        }
-    }
-    
-    // ==========================================
-    // SISTEMA DE CORREO SMTP
-    // ==========================================
-    private function sendEmail($to, $subject, $bodyHtml) {
-        $mail = new PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = getenv('SMTP_USER');
-            $mail->Password   = getenv('SMTP_PASS');
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = getenv('SMTP_PORT') ?: 465;
-            $mail->setFrom(getenv('SMTP_USER'), 'Project Aurora');
-            $mail->addAddress($to);
-            $mail->isHTML(true);
-            $mail->Subject = mb_encode_mimeheader($subject, "UTF-8");
-            $mail->Body    = $bodyHtml;
-            $mail->CharSet = 'UTF-8';
-            $mail->send();
-            return true;
-        } catch (Exception $e) {
-            Logger::system("Error al enviar email SMTP a $to. Asunto: $subject", Logger::LEVEL_ERROR, $e);
-            return false;
-        }
-    }
-
-    // ==========================================
     // AVATAR
     // ==========================================
 
@@ -153,60 +51,18 @@ class SettingsService {
         if ($this->countRecentChanges($userId, 'avatar', '1 DAY', true) >= 3) {
             return ['success' => false, 'message' => 'js.profile.err_limit_avatar'];
         }
-        if ($file['error'] !== UPLOAD_ERR_OK) { 
-            Logger::system("Fallo en subida de archivo. UPLOAD_ERR_CODE: " . $file['error'], Logger::LEVEL_WARNING);
-            return ['success' => false, 'message' => 'Error al subir la imagen. Código: ' . $file['error']]; 
-        }
-        if ($file['size'] > 2 * 1024 * 1024) { 
-            return ['success' => false, 'message' => 'La imagen supera el peso máximo de 2MB.']; 
-        }
-
-        $mime = mime_content_type($file['tmp_name']);
-        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!in_array($mime, $allowedMimes)) { 
-            return ['success' => false, 'message' => 'El formato de imagen no es válido. Solo JPG, PNG, WEBP o GIF.']; 
-        }
-
-        $image = null;
-        switch ($mime) {
-            case 'image/jpeg': $image = @imagecreatefromjpeg($file['tmp_name']); break;
-            case 'image/png':  $image = @imagecreatefrompng($file['tmp_name']); break;
-            case 'image/webp': $image = @imagecreatefromwebp($file['tmp_name']); break;
-            case 'image/gif':  $image = @imagecreatefromgif($file['tmp_name']); break;
-        }
-        if (!$image) { 
-            Logger::system("Archivo de imagen corrupto o malicioso detectado y rechazado.", Logger::LEVEL_WARNING);
-            return ['success' => false, 'message' => 'El archivo de imagen está corrupto o tiene contenido malicioso.']; 
-        }
-
+        
         $storageDir = __DIR__ . '/../../public/storage/profilePictures/uploaded/';
-        if (!file_exists($storageDir)) { 
-            if (!mkdir($storageDir, 0755, true)) {
-                Logger::system("No se pudo crear el directorio de subida: $storageDir", Logger::LEVEL_ERROR);
-            } 
+        $webDir = 'storage/profilePictures/uploaded/';
+
+        // Delegamos todo el procesamiento (validación, GD, guardado) a Utils
+        $processResult = Utils::processAndSaveImage($file, $storageDir, $webDir);
+
+        if (!$processResult['success']) {
+            return $processResult;
         }
 
-        $filename = Utils::generateUUID() . '_' . time() . '.jpg';
-        $filepath = $storageDir . $filename;
-        $webPath = 'storage/profilePictures/uploaded/' . $filename;
-
-        if (in_array($mime, ['image/png', 'image/webp', 'image/gif'])) {
-            $width = imagesx($image);
-            $height = imagesy($image);
-            $bg = imagecreatetruecolor($width, $height);
-            $white = imagecolorallocate($bg, 255, 255, 255);
-            imagefill($bg, 0, 0, $white);
-            imagecopyresampled($bg, $image, 0, 0, 0, 0, $width, $height, $width, $height);
-            imagedestroy($image);
-            $image = $bg;
-        }
-
-        if(!imagejpeg($image, $filepath, 85)){
-             Logger::system("Fallo la escritura del archivo de imagen en: $filepath", Logger::LEVEL_ERROR);
-             imagedestroy($image);
-             return ['success' => false, 'message' => 'Error del servidor al guardar la imagen.'];
-        }
-        imagedestroy($image);
+        $webPath = $processResult['webPath'];
 
         try {
             $stmt = $this->conn->prepare("SELECT avatar_path FROM users WHERE id = :id");
@@ -278,8 +134,8 @@ class SettingsService {
 
         try {
             if ($field === 'correo') {
-                if (!filter_var($newValue, FILTER_VALIDATE_EMAIL)) {
-                    return ['success' => false, 'message' => 'Formato de correo inválido.'];
+                if (!Utils::validateEmail($newValue)) {
+                    return ['success' => false, 'message' => 'Formato de correo inválido o dominio no permitido.'];
                 }
                 $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo AND id != :id");
                 $checkStmt->execute([':correo' => $newValue, ':id' => $userId]);
@@ -294,6 +150,7 @@ class SettingsService {
 
             if ($field === 'nombre') {
                 if ($this->countRecentChanges($userId, 'nombre', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_username']; }
+                if (!Utils::validateUsername($newValue)) { return ['success' => false, 'message' => 'js.auth.err_user_length']; }
             } else if ($field === 'correo') {
                 if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) { return ['success' => false, 'message' => 'js.profile.err_limit_email']; }
             }
@@ -315,19 +172,21 @@ class SettingsService {
     }
 
     public function requestEmailChange($userId, $newEmail) {
-        if (!$this->checkRateLimit('request_email_change')) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
+        if (!Utils::checkRateLimit($this->conn, 'request_email_change', 5)) { 
+            return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; 
+        }
 
         $newEmail = trim($newEmail);
-        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
-            $this->recordActionAttempt('request_email_change', 5, 5);
-            return ['success' => false, 'message' => 'Formato de correo inválido.'];
+        if (!Utils::validateEmail($newEmail)) {
+            Utils::recordActionAttempt($this->conn, 'request_email_change', 5, 5);
+            return ['success' => false, 'message' => 'Formato de correo inválido o dominio no permitido.'];
         }
 
         try {
             $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo");
             $checkStmt->execute([':correo' => $newEmail]);
             if ($checkStmt->rowCount() > 0) {
-                $this->recordActionAttempt('request_email_change', 5, 5);
+                Utils::recordActionAttempt($this->conn, 'request_email_change', 5, 5);
                 return ['success' => false, 'message' => 'El correo ya está en uso.'];
             }
 
@@ -360,8 +219,8 @@ class SettingsService {
                         <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
                         <p>Este código expirará en 15 minutos.</p></div>";
 
-            if ($this->sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
-                $this->resetAttempts('request_email_change');
+            if (Utils::sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
+                Utils::resetAttempts($this->conn, 'request_email_change');
                 Logger::system("Código de cambio de correo enviado al usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Código de verificación enviado a tu correo actual.'];
             }
@@ -427,17 +286,17 @@ class SettingsService {
     }
 
     public function verifyPassword($userId, $password) {
-        if (!$this->checkRateLimit('verify_password')) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
+        if (!Utils::checkRateLimit($this->conn, 'verify_password', 5)) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
         try {
             $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
             $stmt->execute([':id' => $userId]);
             $hash = $stmt->fetchColumn();
 
             if (password_verify($password, $hash)) {
-                $this->resetAttempts('verify_password');
+                Utils::resetAttempts($this->conn, 'verify_password');
                 return ['success' => true];
             }
-            $this->recordActionAttempt('verify_password', 5, 5);
+            Utils::recordActionAttempt($this->conn, 'verify_password', 5, 5);
             return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
         } catch (\Throwable $e) {
             Logger::database("Fallo al intentar verificar contraseña del usuario $userId", Logger::LEVEL_ERROR, $e);
@@ -446,7 +305,7 @@ class SettingsService {
     }
 
     public function updatePassword($userId, $currentPassword, $newPassword) {
-        if (!$this->checkRateLimit('update_password')) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
+        if (!Utils::checkRateLimit($this->conn, 'update_password', 5)) { return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.']; }
 
         try {
             $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
@@ -454,22 +313,18 @@ class SettingsService {
             $hash = $stmt->fetchColumn();
 
             if (!password_verify($currentPassword, $hash)) {
-                $this->recordActionAttempt('update_password', 5, 5);
+                Utils::recordActionAttempt($this->conn, 'update_password', 5, 5);
                 return ['success' => false, 'message' => 'La contraseña actual es incorrecta.'];
             }
 
-            global $APP_CONFIG;
-            $min = (int)($APP_CONFIG['min_password_length'] ?? 12);
-            $max = (int)($APP_CONFIG['max_password_length'] ?? 64);
-            
-            if (strlen($newPassword) < $min || strlen($newPassword) > $max) { return ['success' => false, 'message' => 'js.auth.err_pass_length']; }
+            if (!Utils::validatePassword($newPassword)) { return ['success' => false, 'message' => 'js.auth.err_pass_length']; }
 
             $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
             
             $updStmt = $this->conn->prepare("UPDATE users SET contrasena = :new_hash WHERE id = :id");
             if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
                 $this->logChange($userId, 'contrasena', $hash, $newHash);
-                $this->resetAttempts('update_password');
+                Utils::resetAttempts($this->conn, 'update_password');
                 Logger::system("Usuario ID: $userId actualizó su contraseña con éxito", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
             }
@@ -482,8 +337,8 @@ class SettingsService {
 
     public function updatePreference($userId, $field, $value) {
         try {
-            if (!$this->checkRateLimit('update_preference')) { return ['success' => false, 'message' => 'js.profile.err_limit_prefs']; }
-            $this->recordActionAttempt('update_preference', 15, 5);
+            if (!Utils::checkRateLimit($this->conn, 'update_preference', 5, 15)) { return ['success' => false, 'message' => 'js.profile.err_limit_prefs']; }
+            Utils::recordActionAttempt($this->conn, 'update_preference', 15, 5);
 
             $allowedFields = ['language', 'open_links_new_tab', 'theme', 'extended_alerts'];
             if (!in_array($field, $allowedFields)) { return ['success' => false, 'message' => 'Campo no válido.']; }
