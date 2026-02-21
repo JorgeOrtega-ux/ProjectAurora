@@ -370,34 +370,46 @@ class Utils {
     // VALIDACIÓN CLOUDFLARE TURNSTILE
     // ==========================================
 
-    public static function verifyTurnstile($token, $ip) {
-        $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
-        
-        // Bypass si no está configurado (útil para entorno local de desarrollo)
-        if (empty($secret)) return true; 
-        
-        // Si hay una secret key configurada pero el token viene vacío, es un fallo
-        if (empty($token)) return false;
+    public static function verifyTurnstile($cfToken, $ip) {
+        if (empty($cfToken)) {
+            return false;
+        }
 
+        // Leer la secret key del .env (Asegúrate de tener un fallback por seguridad)
+        $secretKey = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
+
+        if (empty($secretKey)) {
+            Logger::system("FALTA TURNSTILE_SECRET_KEY en el entorno (.env)", Logger::LEVEL_ERROR);
+            return false;
+        }
+
+        $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+        
         $data = [
-            'secret' => $secret,
-            'response' => $token,
+            'secret' => $secretKey,
+            'response' => $cfToken,
             'remoteip' => $ip
         ];
 
-        $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+                'method'  => 'POST',
+                'content' => http_build_query($data)
+            ]
+        ];
 
-        if ($response) {
-            $result = json_decode($response, true);
-            return isset($result['success']) && $result['success'] === true;
+        $context  = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+
+        if ($result === FALSE) {
+            return false;
         }
-        return false;
+
+        $response = json_decode($result, true);
+        
+        // Si Cloudflare nos dice que es exitoso, retornamos true
+        return isset($response['success']) && $response['success'] === true;
     }
 }
 ?>

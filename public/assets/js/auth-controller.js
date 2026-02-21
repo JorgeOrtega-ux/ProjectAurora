@@ -34,7 +34,7 @@ export class AuthController {
             const siteKey = window.APP_CONFIG?.turnstile_site_key || '1x00000000000000000000AA';
             this.currentTurnstileId = turnstile.render(`#${containerId}`, {
                 sitekey: siteKey,
-                size: 'invisible'
+                appearance: 'interaction-only'
             });
         }
     }
