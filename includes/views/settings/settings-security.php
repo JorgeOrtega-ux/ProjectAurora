@@ -1,4 +1,57 @@
-<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
+<?php 
+if (session_status() === PHP_SESSION_NONE) session_start(); 
+
+// --- LÓGICA: OBTENER FECHAS DESDE LA BASE DE DATOS ---
+$lastPasswordUpdate = null;
+$accountCreationDate = null;
+
+if (isset($_SESSION['user_id'])) {
+    global $dbConnection;
+    if (isset($dbConnection)) {
+        $userId = $_SESSION['user_id'];
+
+        // Array para convertir los números de mes a texto en español
+        $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+        try {
+            // 1. Obtener la fecha de creación de la cuenta
+            $stmtUser = $dbConnection->prepare("SELECT fecha FROM users WHERE id = :id LIMIT 1");
+            $stmtUser->execute([':id' => $userId]);
+            $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            
+            if ($userData && !empty($userData['fecha'])) {
+                $timestampUser = strtotime($userData['fecha']);
+                $diaUser = date('j', $timestampUser);
+                $mesUser = $meses[date('n', $timestampUser) - 1];
+                $anioUser = date('Y', $timestampUser);
+                $accountCreationDate = "$diaUser de $mesUser de $anioUser";
+            }
+
+            // 2. Obtener la fecha de la última actualización de contraseña
+            $stmtLog = $dbConnection->prepare("
+                SELECT changed_at 
+                FROM user_changes_log 
+                WHERE user_id = :id AND modified_field = 'contrasena' 
+                ORDER BY changed_at DESC 
+                LIMIT 1
+            ");
+            $stmtLog->execute([':id' => $userId]);
+            $logData = $stmtLog->fetch(PDO::FETCH_ASSOC);
+            
+            if ($logData && !empty($logData['changed_at'])) {
+                $timestampLog = strtotime($logData['changed_at']);
+                $diaLog = date('j', $timestampLog);
+                $mesLog = $meses[date('n', $timestampLog) - 1];
+                $anioLog = date('Y', $timestampLog);
+                $lastPasswordUpdate = "$diaLog de $mesLog de $anioLog";
+            }
+        } catch (\Throwable $e) {
+            // Fallback silencioso en caso de error
+        }
+    }
+}
+// ------------------------------------------------------------
+?>
 <div class="view-content">
     <div class="component-wrapper">
         <input type="hidden" id="csrf_token_settings" value="<?= $_SESSION['csrf_token'] ?? ''; ?>">
@@ -17,7 +70,12 @@
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.security.pass_title') ?></h2>
-                        <p class="component-card__description"><?= t('settings.security.pass_desc') ?></p>
+                        <p class="component-card__description">
+                            <?= $lastPasswordUpdate 
+                                ? t('settings.security.pass_desc_updated', ['last_update' => $lastPasswordUpdate]) 
+                                : t('settings.security.pass_desc_never') 
+                            ?>
+                        </p>
                     </div>
                 </div>
 
@@ -112,7 +170,12 @@
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title" style="color: var(--action-danger);"><?= t('settings.security.delete_title') ?></h2>
-                        <p class="component-card__description"><?= t('settings.security.delete_desc') ?></p>
+                        <p class="component-card__description">
+                            <?= $accountCreationDate 
+                                ? t('settings.security.delete_desc_date', ['creation_date' => $accountCreationDate]) 
+                                : t('settings.security.delete_desc_nodate') 
+                            ?>
+                        </p>
                     </div>
                 </div>
 

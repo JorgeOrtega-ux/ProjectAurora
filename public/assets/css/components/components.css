@@ -762,7 +762,6 @@ input:checked + .component-toggle-slider:before {
 .component-module--dropdown-selector {
     width: 100%;
     min-width: 260px;
-    margin-top: 4px;
 }
 
 /* Cabecera de búsqueda con border-bottom independiente del padding del listado */
