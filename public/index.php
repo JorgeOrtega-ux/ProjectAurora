@@ -80,6 +80,6 @@ if ($isSpaRequest) {
             return text;
         };
     </script>
-    <script type="module" src="assets/js/app-init.js"></script>
+    <script type="module" src="assets/js/core/app-init.js"></script>
 </body>
 </html>

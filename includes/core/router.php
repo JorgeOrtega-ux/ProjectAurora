@@ -38,7 +38,7 @@ class Router {
         // 4. Buscar la ruta en el mapa
         if (!array_key_exists($relativePath, $this->routes)) {
             Logger::system("Intento de acceso a ruta no encontrada (404): $relativePath", Logger::LEVEL_WARNING);
-            return ['view' => '404.php', 'access' => 'public', 'layout' => 'main'];
+            return ['view' => 'system/404.php', 'access' => 'public', 'layout' => 'main'];
         }
 
         $routeConfig = $this->routes[$relativePath];
@@ -83,7 +83,7 @@ class Router {
             if (!$isLoggedIn || !in_array($userRole, ['administrator', 'founder'])) {
                 Logger::system("Intento de acceso denegado a ruta admin por usuario sin permisos: $relativePath", Logger::LEVEL_WARNING);
                 // Retornamos directamente un error 404 para no dar pistas de que la ruta existe
-                return ['view' => '404.php', 'access' => 'public', 'layout' => 'main'];
+                return ['view' => 'system/404.php', 'access' => 'public', 'layout' => 'main'];
             }
         }
 
