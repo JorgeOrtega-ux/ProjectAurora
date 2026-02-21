@@ -9,12 +9,31 @@ export class AdminManageStatusController {
     }
 
     init() {
-        // Escuchar clics (Delegación de eventos)
+        // Escuchar clics (Delegación de eventos global)
         document.body.addEventListener('click', (e) => {
             const view = document.getElementById('admin-manage-status-view');
             if (!view) return;
 
-            // Selección de opción dentro de un dropdown personalizado
+            // --- SOLUCIÓN: MANEJO DE DROPDOWNS (TOGGLE) ---
+            const adminDropdownTrigger = e.target.closest('[data-action="admin-toggle-dropdown"]');
+            if (adminDropdownTrigger) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const wrapper = adminDropdownTrigger.closest('.component-dropdown');
+                const module = wrapper.querySelector('.component-module');
+                
+                // Cerrar otros dropdowns abiertos en la pantalla
+                document.querySelectorAll('.component-dropdown .component-module:not(.disabled)').forEach(m => {
+                    if (m !== module) m.classList.add('disabled');
+                });
+                
+                // Abrir / Cerrar el que recibió el click
+                if (module) module.classList.toggle('disabled');
+                return;
+            }
+
+            // --- MANEJO DE SELECCIÓN DE OPCIONES ---
             const optionSelect = e.target.closest('[data-action="status-select-option"]');
             if (optionSelect) {
                 e.preventDefault();
@@ -22,7 +41,7 @@ export class AdminManageStatusController {
                 return;
             }
 
-            // Click en guardar
+            // --- Click en guardar ---
             const btnSave = e.target.closest('#btn-save-status-changes');
             if (btnSave) {
                 e.preventDefault();
@@ -30,7 +49,7 @@ export class AdminManageStatusController {
             }
         });
 
-        // Escuchar cambios (checkbox)
+        // Escuchar cambios (para el Switch de Activar/Desactivar Suspensión)
         document.body.addEventListener('change', (e) => {
             const view = document.getElementById('admin-manage-status-view');
             if (!view) return;
@@ -49,29 +68,29 @@ export class AdminManageStatusController {
         const wrapper = option.closest('.component-dropdown');
         const module = wrapper.querySelector('.component-module');
         
-        // Actualizar el texto del trigger
+        // 1. Actualizar el texto del trigger
         const textDisplay = wrapper.querySelector('.component-dropdown-text');
         textDisplay.textContent = option.dataset.label;
         
-        // Actualizar el ícono del trigger
+        // 2. Actualizar el ícono del trigger
         const iconDisplay = wrapper.querySelector('.trigger-select-icon');
         const optionIcon = option.querySelector('.component-menu-link-icon span');
         if (iconDisplay && optionIcon) {
             iconDisplay.textContent = optionIcon.textContent;
         }
         
-        // Actualizar estados visuales de la lista
+        // 3. Actualizar estados visuales de la lista
         module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
         option.classList.add('active');
         
-        // Asignar valor final al componente padre (wrapper)
+        // 4. Asignar valor final al componente padre (wrapper)
         const value = option.dataset.value;
         wrapper.dataset.value = value;
         
-        // Cerrar módulo
+        // 5. Cerrar módulo
         module.classList.add('disabled');
 
-        // Disparar lógica en cascada según el tipo de campo
+        // 6. Disparar lógica en cascada según el tipo de campo
         const target = option.dataset.target;
         if (target === 'lifecycle') {
             this.handleLifecycleChange(value);
@@ -104,10 +123,12 @@ export class AdminManageStatusController {
 
     handleSuspensionTypeChange(type) {
         const dateSection = document.getElementById('cascade-suspension-date');
+        if (!dateSection) return;
+
         if (type === 'temporal') {
-            if (dateSection) dateSection.style.display = 'flex';
+            dateSection.classList.replace('disabled', 'active');
         } else {
-            if (dateSection) dateSection.style.display = 'none';
+            dateSection.classList.replace('active', 'disabled');
         }
     }
 
