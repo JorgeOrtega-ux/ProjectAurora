@@ -117,7 +117,7 @@ export class PreferencesController {
             : (document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '');
         if (!csrfToken) return false;
         try {
-            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrfToken: csrfToken });
+           const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_PREFERENCE, { field: key, value: value, csrf_token: csrfToken });
             if (!res.success) {
                 alert(window.t(res.message));
                 return false;
