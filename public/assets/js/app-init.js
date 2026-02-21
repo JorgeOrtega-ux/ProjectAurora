@@ -6,7 +6,8 @@ import { ProfileController } from './profile-controller.js';
 import { PreferencesController } from './preferences-controller.js'; 
 import { DialogController } from './dialog-controller.js';
 import { TooltipController } from './tooltip-controller.js';
-import { TwoFactorController } from './2fa-controller.js'; // <-- Importado
+import { TwoFactorController } from './2fa-controller.js'; 
+import { DevicesController } from './devices-controller.js'; // <-- Importado
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -22,5 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.preferencesController = new PreferencesController(); 
     window.dialogController = new DialogController();
     window.tooltipController = new TooltipController(); 
-    window.twoFactorController = new TwoFactorController(); // <-- Inicializado
+    window.twoFactorController = new TwoFactorController(); 
+    window.devicesController = new DevicesController(); // <-- Inicializado
 });

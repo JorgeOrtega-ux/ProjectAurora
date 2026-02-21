@@ -30,6 +30,11 @@ export const API_ROUTES = {
         INIT_2FA: `${BASE_PATH}/api/settings.2fa_init`,
         ENABLE_2FA: `${BASE_PATH}/api/settings.2fa_enable`,
         DISABLE_2FA: `${BASE_PATH}/api/settings.2fa_disable`,
-        REGEN_2FA: `${BASE_PATH}/api/settings.2fa_regen`
+        REGEN_2FA: `${BASE_PATH}/api/settings.2fa_regen`,
+
+        // RUTAS DE GESTIÓN DE DISPOSITIVOS (SESIONES)
+        GET_DEVICES: `${BASE_PATH}/api/settings.get_devices`,
+        REVOKE_DEVICE: `${BASE_PATH}/api/settings.revoke_device`,
+        REVOKE_ALL_DEVICES: `${BASE_PATH}/api/settings.revoke_all_devices`
     }
 };

@@ -486,5 +486,99 @@ class SettingsService {
             return ['success' => false, 'message' => 'Error interno.'];
         }
     }
+
+    // ==========================================
+    // MÉTODOS DE GESTIÓN DE DISPOSITIVOS (SESIONES)
+    // ==========================================
+
+    private function parseUserAgent($u_agent) {
+        $platform = 'Unknown OS';
+        if (preg_match('/windows|win32/i', $u_agent)) {
+            $platform = 'Windows';
+        } elseif (preg_match('/macintosh|mac os x/i', $u_agent)) {
+            $platform = 'Mac';
+        } elseif (preg_match('/linux/i', $u_agent)) {
+            $platform = 'Linux';
+        } elseif (preg_match('/iphone/i', $u_agent)) {
+            $platform = 'iOS (iPhone)';
+        } elseif (preg_match('/ipad/i', $u_agent)) {
+            $platform = 'iOS (iPad)';
+        } elseif (preg_match('/android/i', $u_agent)) {
+            $platform = 'Android';
+        }
+
+        $browser = 'Unknown Browser';
+        if (preg_match('/MSIE/i', $u_agent) && !preg_match('/Opera/i', $u_agent)) {
+            $browser = 'Internet Explorer';
+        } elseif (preg_match('/Firefox/i', $u_agent)) {
+            $browser = 'Firefox';
+        } elseif (preg_match('/OPR/i', $u_agent)) {
+            $browser = 'Opera';
+        } elseif (preg_match('/Edg/i', $u_agent)) {
+            $browser = 'Edge';
+        } elseif (preg_match('/Chrome/i', $u_agent)) {
+            $browser = 'Chrome';
+        } elseif (preg_match('/Safari/i', $u_agent)) {
+            $browser = 'Safari';
+        }
+        
+        return ['os' => $platform, 'browser' => $browser];
+    }
+
+    public function getDevices($userId, $currentSessionId) {
+        try {
+            $stmt = $this->conn->prepare("SELECT session_id, ip_address, user_agent, last_activity, created_at FROM user_sessions WHERE user_id = :uid ORDER BY last_activity DESC");
+            $stmt->execute([':uid' => $userId]);
+            $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $devices = [];
+            foreach ($sessions as $session) {
+                $parsedUA = $this->parseUserAgent($session['user_agent']);
+                $devices[] = [
+                    'session_id' => $session['session_id'],
+                    'ip_address' => $session['ip_address'],
+                    'os' => $parsedUA['os'],
+                    'browser' => $parsedUA['browser'],
+                    'last_activity' => $session['last_activity'],
+                    'created_at' => $session['created_at'],
+                    'is_current' => ($session['session_id'] === $currentSessionId)
+                ];
+            }
+
+            return ['success' => true, 'devices' => $devices];
+        } catch (\Throwable $e) {
+            Logger::database("Error al obtener los dispositivos del usuario $userId", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error al obtener las sesiones activas.'];
+        }
+    }
+
+    public function revokeDevice($userId, $sessionIdToRevoke) {
+        try {
+            $stmt = $this->conn->prepare("DELETE FROM user_sessions WHERE session_id = :sid AND user_id = :uid");
+            $stmt->execute([':sid' => $sessionIdToRevoke, ':uid' => $userId]);
+
+            if ($stmt->rowCount() > 0) {
+                Logger::system("Usuario ID: $userId revocó una sesión individual ($sessionIdToRevoke)", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Sesión revocada correctamente.'];
+            }
+            return ['success' => false, 'message' => 'La sesión no existe o ya fue revocada.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error al revocar dispositivo $sessionIdToRevoke para el usuario $userId", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al intentar revocar la sesión.'];
+        }
+    }
+
+    public function revokeAllOtherDevices($userId, $currentSessionId) {
+        try {
+            $stmt = $this->conn->prepare("DELETE FROM user_sessions WHERE user_id = :uid AND session_id != :sid");
+            $stmt->execute([':uid' => $userId, ':sid' => $currentSessionId]);
+
+            Logger::system("Usuario ID: $userId revocó todas las demás sesiones.", Logger::LEVEL_INFO);
+            return ['success' => true, 'message' => 'Se han cerrado todas las demás sesiones.'];
+        } catch (\Throwable $e) {
+            Logger::database("Error al revocar todas las demás sesiones para el usuario $userId", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al intentar revocar las sesiones.'];
+        }
+    }
 }
 ?>

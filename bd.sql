@@ -8,6 +8,7 @@ USE project_aurora_db;
 DROP TABLE IF EXISTS server_config;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS user_changes_log;
+DROP TABLE IF EXISTS user_sessions;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS rate_limits;
@@ -73,7 +74,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. Crear la tabla 'server_config'
+-- 9. Crear la tabla 'user_sessions' (NUEVA TABLA DE DISPOSITIVOS)
+CREATE TABLE IF NOT EXISTS user_sessions (
+    session_id VARCHAR(128) PRIMARY KEY,
+    user_id INT NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent TEXT NOT NULL,
+    last_activity DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 10. Crear la tabla 'server_config'
 CREATE TABLE IF NOT EXISTS server_config (
     setting_key VARCHAR(50) PRIMARY KEY,
     setting_value TEXT NOT NULL,

@@ -102,6 +102,48 @@ try {
     }
 }
 
+// --- MIDDLEWARE DE GESTIÓN DE DISPOSITIVOS (SESIONES ACTIVAS) ---
+if (isset($_SESSION['user_id']) && isset($dbConnection)) {
+    $currentSessionId = session_id();
+    $userId = $_SESSION['user_id'];
+    
+    try {
+        $stmt = $dbConnection->prepare("SELECT session_id FROM user_sessions WHERE session_id = :sid AND user_id = :uid LIMIT 1");
+        $stmt->execute([':sid' => $currentSessionId, ':uid' => $userId]);
+        
+        if ($stmt->rowCount() === 0) {
+            // La sesión fue revocada remotamente o ya no es válida
+            Logger::system("Sesión revocada o inválida detectada y destruida. ID: $currentSessionId, User ID: $userId", Logger::LEVEL_INFO);
+            session_unset();
+            session_destroy();
+            
+            $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
+                            (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                            (isset($_SERVER['HTTP_X_SPA_REQUEST']));
+            
+            if ($isApiRequest) {
+                header('X-SPA-Redirect: /ProjectAurora/login');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Sesión expirada o revocada desde otro dispositivo.']);
+                exit;
+            } else {
+                header("Location: /ProjectAurora/login");
+                exit;
+            }
+        } else {
+            // Optimización: Actualizamos la última actividad solo cada 5 minutos (300 segundos) para no saturar la BD
+            if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activity_update']) > 300) {
+                $updStmt = $dbConnection->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_id = :sid");
+                $updStmt->execute([':sid' => $currentSessionId]);
+                $_SESSION['last_activity_update'] = time();
+            }
+        }
+    } catch (\Throwable $e) {
+        Logger::database("Fallo al validar la sesión en la tabla user_sessions", Logger::LEVEL_ERROR, $e);
+    }
+}
+// ----------------------------------------------------------------
+
 // --- SISTEMA DE INTERNACIONALIZACIÓN (i18n) ---
 $auroraLang = $_COOKIE['aurora_lang'] ?? 'en-us'; 
 $fileName = ($auroraLang === 'es-latam') ? 'es-419' : $auroraLang; 

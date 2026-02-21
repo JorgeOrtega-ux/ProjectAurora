@@ -150,6 +150,14 @@ class AuthService {
                 $_SESSION['user_role'] = 'user';
                 $_SESSION['user_avatar'] = $webPath;
 
+                // --- INTEGRACIÓN GESTIÓN DE DISPOSITIVOS ---
+                $sessionId = session_id();
+                $ipAddress = Utils::getClientIP();
+                $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+                $sessStmt = $this->conn->prepare("INSERT INTO user_sessions (session_id, user_id, ip_address, user_agent) VALUES (:sid, :uid, :ip, :ua) ON DUPLICATE KEY UPDATE last_activity = NOW(), ip_address = :ip2, user_agent = :ua2");
+                $sessStmt->execute([':sid' => $sessionId, ':uid' => $newUserId, ':ip' => $ipAddress, ':ua' => $userAgent, ':ip2' => $ipAddress, ':ua2' => $userAgent]);
+                // -------------------------------------------
+
                 Logger::system("Nuevo usuario registrado: $email (ID: $newUserId)", Logger::LEVEL_INFO);
 
                 return [
@@ -215,6 +223,14 @@ class AuthService {
                     $prefStmt->execute([':uid' => $row['id']]);
                     $userLang = $prefStmt->fetchColumn() ?: 'es-latam';
                     setcookie('aurora_lang', $userLang, time() + 31536000, '/');
+
+                    // --- INTEGRACIÓN GESTIÓN DE DISPOSITIVOS ---
+                    $sessionId = session_id();
+                    $ipAddress = Utils::getClientIP();
+                    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+                    $sessStmt = $this->conn->prepare("INSERT INTO user_sessions (session_id, user_id, ip_address, user_agent) VALUES (:sid, :uid, :ip, :ua) ON DUPLICATE KEY UPDATE last_activity = NOW(), ip_address = :ip2, user_agent = :ua2");
+                    $sessStmt->execute([':sid' => $sessionId, ':uid' => $row['id'], ':ip' => $ipAddress, ':ua' => $userAgent, ':ip2' => $ipAddress, ':ua2' => $userAgent]);
+                    // -------------------------------------------
 
                     Logger::system("Inicio de sesión exitoso: $email (ID: {$row['id']})", Logger::LEVEL_INFO);
 
@@ -301,6 +317,14 @@ class AuthService {
                     $userLang = $prefStmt->fetchColumn() ?: 'es-latam';
                     setcookie('aurora_lang', $userLang, time() + 31536000, '/');
 
+                    // --- INTEGRACIÓN GESTIÓN DE DISPOSITIVOS ---
+                    $sessionId = session_id();
+                    $ipAddress = Utils::getClientIP();
+                    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+                    $sessStmt = $this->conn->prepare("INSERT INTO user_sessions (session_id, user_id, ip_address, user_agent) VALUES (:sid, :uid, :ip, :ua) ON DUPLICATE KEY UPDATE last_activity = NOW(), ip_address = :ip2, user_agent = :ua2");
+                    $sessStmt->execute([':sid' => $sessionId, ':uid' => $userId, ':ip' => $ipAddress, ':ua' => $userAgent, ':ip2' => $ipAddress, ':ua2' => $userAgent]);
+                    // -------------------------------------------
+
                     Logger::system("Inicio de sesión 2FA exitoso: {$row['correo']} (ID: $userId)", Logger::LEVEL_INFO);
                     return ['success' => true, 'message' => 'Inicio de sesión exitoso.'];
                 }
@@ -318,7 +342,20 @@ class AuthService {
 
     public function logout() {
         $userId = $_SESSION['user_id'] ?? 'Guest';
+        $sessionId = session_id();
+
+        // Eliminar la sesión de la base de datos si el usuario está conectado
+        if ($userId !== 'Guest') {
+            try {
+                $stmt = $this->conn->prepare("DELETE FROM user_sessions WHERE session_id = :sid");
+                $stmt->execute([':sid' => $sessionId]);
+            } catch (\Throwable $e) {
+                Logger::database("Error al eliminar la sesión en logout. ID: $sessionId", Logger::LEVEL_ERROR, $e);
+            }
+        }
+
         Logger::system("Cierre de sesión: Usuario ID: $userId", Logger::LEVEL_INFO);
+        session_unset();
         session_destroy();
         return ['success' => true];
     }

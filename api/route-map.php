@@ -30,6 +30,11 @@ return [
     'settings.2fa_init'           => ['file' => 'handler/settings-handler.php', 'action' => '2fa_init'],
     'settings.2fa_enable'         => ['file' => 'handler/settings-handler.php', 'action' => '2fa_enable'],
     'settings.2fa_disable'        => ['file' => 'handler/settings-handler.php', 'action' => '2fa_disable'],
-    'settings.2fa_regen'          => ['file' => 'handler/settings-handler.php', 'action' => '2fa_regen']
+    'settings.2fa_regen'          => ['file' => 'handler/settings-handler.php', 'action' => '2fa_regen'],
+
+    // --- RUTAS DE GESTIÓN DE DISPOSITIVOS (SESIONES) ---
+    'settings.get_devices'        => ['file' => 'handler/settings-handler.php', 'action' => 'get_devices'],
+    'settings.revoke_device'      => ['file' => 'handler/settings-handler.php', 'action' => 'revoke_device'],
+    'settings.revoke_all_devices' => ['file' => 'handler/settings-handler.php', 'action' => 'revoke_all_devices']
 ];
 ?>

@@ -137,6 +137,30 @@ return function($dbConnection, $action) {
             Utils::sendResponse($settings->regenerate2FACodes($userId, $data->password));
             break;
 
+        // --- MANEJADORES DE DISPOSITIVOS (SESIONES) ---
+        case 'get_devices':
+            Utils::sendResponse($settings->getDevices($userId, session_id()));
+            break;
+
+        case 'revoke_device':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { 
+                Logger::system("Fallo de validación CSRF en revoke_device para User ID: $userId", Logger::LEVEL_WARNING);
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); 
+            }
+            if (empty($data->session_id)) { Utils::sendResponse(['success' => false, 'message' => 'ID de sesión requerido.']); }
+            Utils::sendResponse($settings->revokeDevice($userId, $data->session_id));
+            break;
+
+        case 'revoke_all_devices':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { 
+                Logger::system("Fallo de validación CSRF en revoke_all_devices para User ID: $userId", Logger::LEVEL_WARNING);
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); 
+            }
+            Utils::sendResponse($settings->revokeAllOtherDevices($userId, session_id()));
+            break;
+
         default:
             Utils::sendResponse(['success' => false, 'message' => 'Acción no válida.']);
             break;
