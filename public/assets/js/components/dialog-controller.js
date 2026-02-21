@@ -1,4 +1,4 @@
-// public/assets/js/dialog-controller.js
+// public/assets/js/components/dialog-controller.js
 import { DIALOG_CONFIG } from './dialog-config.js';
 
 export class DialogController {
@@ -50,22 +50,84 @@ export class DialogController {
             buttonsHtml += '</div>';
         }
 
+        // HTML reestructurado para incluir la barra de arrastre y un contenedor de contenido
         overlay.innerHTML = `
             <div class="component-dialog-box">
-                <div class="component-dialog-header">
-                    <h3 class="component-dialog-title">${config.title}</h3>
-                    <button class="component-dialog-close" data-action="close-dialog" data-target="${dialogId}">
-                        <span class="material-symbols-rounded">close</span>
-                    </button>
+                <div class="pill-container"><div class="drag-handle"></div></div>
+                <div class="component-dialog-content">
+                    <div class="component-dialog-header">
+                        <h3 class="component-dialog-title">${config.title}</h3>
+                        <button class="component-dialog-close" data-action="close-dialog" data-target="${dialogId}">
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
+                    </div>
+                    <div class="component-dialog-body">
+                        ${config.body}
+                    </div>
+                    ${buttonsHtml}
                 </div>
-                <div class="component-dialog-body">
-                    ${config.body}
-                </div>
-                ${buttonsHtml}
             </div>
         `;
 
         document.body.appendChild(overlay);
+
+        // --- LÓGICA DE DRAG & DROP (SWIPE TO DISMISS) ---
+        const box = overlay.querySelector('.component-dialog-box');
+        const pill = overlay.querySelector('.pill-container');
+
+        if (pill && box) {
+            let isDragging = false;
+            let startY = 0;
+            let currentDiff = 0;
+
+            pill.addEventListener('pointerdown', (e) => {
+                // Solo activamos el drag en resoluciones móviles (coincidiendo con el CSS)
+                if (window.innerWidth > 468) return;
+                // Ignorar clics secundarios del ratón
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+                isDragging = true;
+                startY = e.clientY;
+                box.style.transition = 'none'; // Desactivar transición suave para seguir el dedo instantáneamente
+                box.setPointerCapture(e.pointerId);
+            });
+
+            box.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                if (e.cancelable) e.preventDefault();
+
+                const diff = e.clientY - startY;
+                // Solo permitimos arrastrar hacia abajo
+                if (diff > 0) {
+                    box.style.transform = `translateY(${diff}px)`;
+                    currentDiff = diff;
+                }
+            });
+
+            const endDrag = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                // Restaurar la transición CSS original
+                box.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                
+                if (box.hasPointerCapture(e.pointerId)) {
+                    box.releasePointerCapture(e.pointerId);
+                }
+
+                // Si se arrastró más del 40% del alto, cerrar el diálogo
+                const threshold = box.offsetHeight * 0.40; 
+                if (currentDiff > threshold) {
+                    this.close(dialogId);
+                } else {
+                    box.style.transform = ''; // Vuelve a la posición de apertura
+                }
+                currentDiff = 0;
+            };
+
+            box.addEventListener('pointerup', endDrag);
+            box.addEventListener('pointercancel', endDrag);
+        }
 
         // Forzar reflow para que la animación CSS (fade in/scale) se ejecute correctamente
         void overlay.offsetWidth;
@@ -76,6 +138,13 @@ export class DialogController {
         const dialog = document.getElementById(dialogId);
         if (dialog) {
             dialog.classList.remove('active');
+            
+            // Forzar transform en móvil para animar la salida hacia abajo si fue arrastrado
+            const box = dialog.querySelector('.component-dialog-box');
+            if (box && window.innerWidth <= 468) {
+                box.style.transform = 'translateY(100%)';
+            }
+
             // Eliminar del DOM después de la animación de cierre (300ms)
             setTimeout(() => {
                 dialog.remove();
