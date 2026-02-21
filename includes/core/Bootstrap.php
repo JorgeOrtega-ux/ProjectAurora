@@ -102,24 +102,24 @@ try {
     }
 }
 
-// --- MIDDLEWARE DE GESTIÓN DE DISPOSITIVOS (SESIONES ACTIVAS) ---
+// --- MIDDLEWARE DE GESTIÓN DE DISPOSITIVOS Y ESTADO DE USUARIO ---
 if (isset($_SESSION['user_id']) && isset($dbConnection)) {
     $currentSessionId = session_id();
     $userId = $_SESSION['user_id'];
     
     try {
+        // Validación de sesión remota
         $stmt = $dbConnection->prepare("SELECT session_id FROM user_sessions WHERE session_id = :sid AND user_id = :uid LIMIT 1");
         $stmt->execute([':sid' => $currentSessionId, ':uid' => $userId]);
         
+        $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
+                        (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                        (isset($_SERVER['HTTP_X_SPA_REQUEST']));
+
         if ($stmt->rowCount() === 0) {
-            // La sesión fue revocada remotamente o ya no es válida
             Logger::system("Sesión revocada o inválida detectada y destruida. ID: $currentSessionId, User ID: $userId", Logger::LEVEL_INFO);
             session_unset();
             session_destroy();
-            
-            $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
-                            (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
-                            (isset($_SERVER['HTTP_X_SPA_REQUEST']));
             
             if ($isApiRequest) {
                 header('X-SPA-Redirect: /ProjectAurora/login');
@@ -131,15 +131,55 @@ if (isset($_SESSION['user_id']) && isset($dbConnection)) {
                 exit;
             }
         } else {
-            // Optimización: Actualizamos la última actividad solo cada 5 minutos (300 segundos) para no saturar la BD
             if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activity_update']) > 300) {
                 $updStmt = $dbConnection->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_id = :sid");
                 $updStmt->execute([':sid' => $currentSessionId]);
                 $_SESSION['last_activity_update'] = time();
             }
         }
+
+        // --- SINCRONIZACIÓN EN TIEMPO REAL: ACTUALIZAR DATOS DE USUARIO ---
+        $stmtUser = $dbConnection->prepare("SELECT nombre, correo, role, avatar_path, status FROM users WHERE id = :uid LIMIT 1");
+        $stmtUser->execute([':uid' => $userId]);
+        $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+        if (!$userData || $userData['status'] !== 'active') {
+            Logger::system("Usuario inactivo/suspendido/eliminado detectado en recarga. ID: $userId", Logger::LEVEL_INFO);
+            session_unset();
+            session_destroy();
+            
+            $statusMessage = ($userData && $userData['status'] === 'suspended') ? 'Tu cuenta ha sido suspendida.' : 'Tu cuenta ha sido eliminada o no existe.';
+            
+            if ($isApiRequest) {
+                header('X-SPA-Redirect: /ProjectAurora/login');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => $statusMessage]);
+                exit;
+            } else {
+                header("Location: /ProjectAurora/login");
+                exit;
+            }
+        }
+
+        // Mantener las sesiones actualizadas
+        $_SESSION['user_name'] = $userData['nombre'];
+        $_SESSION['user_email'] = $userData['correo'];
+        $_SESSION['user_role'] = $userData['role'];
+        $_SESSION['user_avatar'] = $userData['avatar_path'];
+
+        // Sincronizar Preferencias
+        $stmtPrefs = $dbConnection->prepare("SELECT language FROM user_preferences WHERE user_id = :uid LIMIT 1");
+        $stmtPrefs->execute([':uid' => $userId]);
+        $prefData = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
+        if ($prefData && isset($prefData['language'])) {
+            if (($_COOKIE['aurora_lang'] ?? '') !== $prefData['language']) {
+                setcookie('aurora_lang', $prefData['language'], time() + 31536000, '/');
+                $_COOKIE['aurora_lang'] = $prefData['language']; 
+            }
+        }
+
     } catch (\Throwable $e) {
-        Logger::database("Fallo al validar la sesión en la tabla user_sessions", Logger::LEVEL_ERROR, $e);
+        Logger::database("Fallo al validar la sesión o sincronizar datos de usuario", Logger::LEVEL_ERROR, $e);
     }
 }
 // ----------------------------------------------------------------

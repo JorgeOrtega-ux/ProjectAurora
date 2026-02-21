@@ -368,6 +368,33 @@ class SettingsService {
     }
 
     // ==========================================
+    // ELIMINAR CUENTA (NUEVO MÉTODO)
+    // ==========================================
+
+    public function deleteAccount($userId, $password) {
+        try {
+            $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+            $stmt->execute([':id' => $userId]);
+            $hash = $stmt->fetchColumn();
+
+            if (!password_verify($password, $hash)) {
+                return ['success' => false, 'message' => 'La contraseña es incorrecta.'];
+            }
+
+            $upd = $this->conn->prepare("UPDATE users SET status = 'deleted' WHERE id = :id");
+            if ($upd->execute([':id' => $userId])) {
+                Logger::system("El usuario ID: $userId ha eliminado su cuenta correctamente", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Tu cuenta ha sido eliminada.'];
+            }
+            
+            return ['success' => false, 'message' => 'Error al actualizar el estado de la cuenta.'];
+        } catch (\Throwable $e) {
+            Logger::database("Fallo grave al intentar eliminar cuenta para usuario ID: $userId", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Ocurrió un error interno al intentar eliminar la cuenta.'];
+        }
+    }
+
+    // ==========================================
     // MÉTODOS DE 2FA
     // ==========================================
 

@@ -21,6 +21,7 @@ CREATE TABLE users (
     correo VARCHAR(150) NOT NULL UNIQUE,
     contrasena VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user' COMMENT 'Rol del usuario para permisos y UI',
+    status ENUM('active', 'suspended', 'deleted') DEFAULT 'active' COMMENT 'Estado actual de la cuenta',
     avatar_path VARCHAR(255) DEFAULT NULL COMMENT 'Ruta de la imagen guardada en storage',
     two_factor_secret VARCHAR(255) DEFAULT NULL COMMENT 'Clave secreta para 2FA',
     two_factor_enabled BOOLEAN DEFAULT FALSE COMMENT 'Estado de 2FA',

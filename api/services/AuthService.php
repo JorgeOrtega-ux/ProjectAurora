@@ -108,9 +108,10 @@ class AuthService {
             $webDir = 'storage/profilePictures/default/';
             $webPath = Utils::generateAndSaveAvatar($username, $uuid, $storageDir, $webDir);
 
+            // Asegurar que el estatus por defecto es active, aunque en DB ya está configurado
             $query = "INSERT INTO " . $this->table_name . " 
-                     (uuid, nombre, correo, contrasena, avatar_path) 
-                     VALUES (:uuid, :nombre, :correo, :contrasena, :avatar_path)";
+                     (uuid, nombre, correo, contrasena, avatar_path, status) 
+                     VALUES (:uuid, :nombre, :correo, :contrasena, :avatar_path, 'active')";
             
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':uuid', $uuid);
@@ -184,13 +185,25 @@ class AuthService {
         }
 
         try {
-            $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+            // Se añade el campo `status` a la consulta
+            $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role, status, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':correo', $email);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                // --- VERIFICAR ESTATUS DE LA CUENTA ANTES DE VALIDAR CONTRASEÑA ---
+                if ($row['status'] === 'suspended') {
+                    Logger::system("Intento de login en cuenta suspendida: $email", Logger::LEVEL_WARNING);
+                    return ['success' => false, 'message' => 'Tu cuenta ha sido suspendida. Contacta a soporte para más información.'];
+                }
+                if ($row['status'] === 'deleted') {
+                    Logger::system("Intento de login en cuenta eliminada: $email", Logger::LEVEL_WARNING);
+                    return ['success' => false, 'message' => 'Esta cuenta ha sido eliminada.'];
+                }
+
                 if (password_verify($password, $row['contrasena'])) {
                     
                     // --- INTEGRACIÓN 2FA ---
@@ -269,13 +282,17 @@ class AuthService {
         $userId = $_SESSION['temp_2fa_user_id'];
         
         try {
-            $query = "SELECT id, uuid, nombre, correo, avatar_path, role, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
+            $query = "SELECT id, uuid, nombre, correo, avatar_path, role, status, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $userId);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row['status'] !== 'active') {
+                    return ['success' => false, 'message' => 'Tu cuenta se encuentra suspendida o eliminada.'];
+                }
                 
                 $isValid = false;
                 $code = trim($code);
@@ -366,9 +383,19 @@ class AuthService {
         }
 
         try {
-            if (!$this->checkEmail($email)) {
+            // Verificar si el correo existe y si la cuenta no está eliminada
+            $stmtCheck = $this->conn->prepare("SELECT id, status FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1");
+            $stmtCheck->bindParam(':correo', $email);
+            $stmtCheck->execute();
+
+            if ($stmtCheck->rowCount() === 0) {
                 Utils::recordActionAttempt($this->conn, 'forgot_password', 5, 15);
                 return ['success' => false, 'message' => 'El correo proporcionado no está registrado en el sistema.'];
+            }
+
+            $userRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+            if ($userRow['status'] === 'deleted') {
+                return ['success' => false, 'message' => 'Esta cuenta ha sido eliminada.'];
             }
 
             Utils::resetAttempts($this->conn, 'forgot_password');

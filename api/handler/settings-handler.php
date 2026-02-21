@@ -102,6 +102,25 @@ return function($dbConnection, $action) {
             Utils::sendResponse($settings->updatePassword($userId, $data->current_password, $data->new_password));
             break;
 
+        // --- MANEJADOR DE ELIMINAR CUENTA ---
+        case 'delete_account':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { 
+                Logger::system("Fallo de validación CSRF en delete_account para User ID: $userId", Logger::LEVEL_WARNING);
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); 
+            }
+            if (empty($data->password)) { Utils::sendResponse(['success' => false, 'message' => 'La contraseña es requerida.']); }
+            
+            $result = $settings->deleteAccount($userId, $data->password);
+            
+            if ($result['success'] === true) {
+                // Destruir sesión si todo salió bien
+                session_unset();
+                session_destroy();
+            }
+            Utils::sendResponse($result);
+            break;
+
         // --- MANEJADORES DE 2FA ---
         case '2fa_init':
             Utils::sendResponse($settings->init2FA($userId));

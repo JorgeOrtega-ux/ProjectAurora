@@ -21,6 +21,7 @@ return [
     '/settings/accessibility' => ['view' => 'settings-accessibility.php', 'access' => 'auth', 'layout' => 'main'],
     '/settings/2fa-setup' => ['view' => 'settings-2fa.php', 'access' => 'auth', 'layout' => 'main'],
     '/settings/devices' => ['view' => 'settings-devices.php', 'access' => 'auth', 'layout' => 'main'],
+    '/settings/delete-account' => ['view' => 'settings-delete-account.php', 'access' => 'auth', 'layout' => 'main'],
 
     // Ruta especial
     '/settings/guest' => ['view' => 'settings-guest.php', 'access' => 'guest', 'layout' => 'main'],
