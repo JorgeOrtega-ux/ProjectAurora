@@ -10,7 +10,8 @@ export class AdminManageUserController {
 
     init() {
         document.body.addEventListener('click', (e) => {
-            const view = document.getElementById('admin-manage-user-view');
+            // Evaluamos si existe la vista de gestionar usuario O la de gestionar rol
+            const view = document.getElementById('admin-manage-user-view') || document.getElementById('admin-manage-role-view');
             if (!view) return;
 
             // --- FOTO DE PERFIL ---
@@ -57,11 +58,11 @@ export class AdminManageUserController {
                 return; 
             }
 
-            // --- DROPDOWNS DE PREFERENCIAS ---
+            // --- DROPDOWNS (PREFERENCIAS Y ROLES) ---
             const adminDropdownTrigger = e.target.closest('[data-action="admin-toggle-dropdown"]');
             if (adminDropdownTrigger) {
                 e.preventDefault();
-                e.stopPropagation(); // SOLUCIÓN: Evita que el MainController intercepte el clic y lo cierre inmediatamente
+                e.stopPropagation(); 
                 
                 const wrapper = adminDropdownTrigger.closest('.component-dropdown');
                 const module = wrapper.querySelector('.component-module');
@@ -75,6 +76,7 @@ export class AdminManageUserController {
                 return;
             }
 
+            // Seleccionar preferencia normal
             const adminOptionSelect = e.target.closest('[data-action="admin-select-option"]');
             if (adminOptionSelect) {
                 e.preventDefault();
@@ -95,6 +97,23 @@ export class AdminManageUserController {
 
                 const prefKey = wrapper.dataset.prefKey;
                 this.updateAdminPreference(prefKey, adminOptionSelect.dataset.value);
+                return;
+            }
+
+            // --- NUEVO: Seleccionar y Guardar Rol ---
+            const adminRoleSelect = e.target.closest('[data-action="admin-select-role"]');
+            if (adminRoleSelect) {
+                e.preventDefault();
+                const wrapper = adminRoleSelect.closest('.component-dropdown');
+                const module = wrapper.querySelector('.component-module');
+                const textDisplay = wrapper.querySelector('.component-dropdown-text');
+                textDisplay.textContent = adminRoleSelect.dataset.label;
+
+                module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
+                adminRoleSelect.classList.add('active');
+                module.classList.add('disabled');
+
+                this.updateAdminRole(adminRoleSelect.dataset.value);
                 return;
             }
         });
@@ -311,14 +330,14 @@ export class AdminManageUserController {
         try {
             const res = await ApiService.post(API_ROUTES.ADMIN.UPDATE_FIELD, { 
                 target_uuid: uuid,
-                field: target, // 'username' o 'email'
+                field: target, 
                 value: newValue, 
                 csrf_token: csrfToken 
             });
             
             if (res.success) {
                 displayEl.textContent = res.newValue;
-                inputEl.value = res.newValue; // Sincroniza
+                inputEl.value = res.newValue;
                 this.toggleFieldState(target, 'view');
                 Toast.show(res.message, 'success'); 
             } else { 
@@ -333,8 +352,32 @@ export class AdminManageUserController {
     }
 
     // ==========================================
-    // MÉTODOS DE PREFERENCIAS
+    // MÉTODOS DE PREFERENCIAS Y ROLES
     // ==========================================
+
+    async updateAdminRole(newRole) {
+        const uuid = this.getTargetUuid();
+        if (!uuid) return;
+
+        const csrfToken = document.getElementById('csrf_token_admin') ? document.getElementById('csrf_token_admin').value : '';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.ADMIN.UPDATE_FIELD, { 
+                target_uuid: uuid,
+                field: 'role',
+                value: newRole, 
+                csrf_token: csrfToken 
+            });
+            
+            if (res.success) {
+                Toast.show(res.message, 'success'); 
+            } else { 
+                Toast.show(res.message, 'error');
+            }
+        } catch (error) {
+            Toast.show('Error de red al intentar actualizar el rol.', 'error'); 
+        }
+    }
 
     async updateAdminPreference(field, value) {
         const uuid = this.getTargetUuid();

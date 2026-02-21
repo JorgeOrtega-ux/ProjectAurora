@@ -30,7 +30,8 @@ class AdminService {
 
     // Obtener los datos actuales del usuario objetivo por su UUID
     private function getTargetUser($targetUuid) {
-        $stmt = $this->conn->prepare("SELECT id, uuid, username, email, avatar_path FROM users WHERE uuid = :uuid LIMIT 1");
+        // Modificación importante: Se agregó el campo 'role'
+        $stmt = $this->conn->prepare("SELECT id, uuid, username, email, avatar_path, role FROM users WHERE uuid = :uuid LIMIT 1");
         $stmt->execute([':uuid' => $targetUuid]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -103,7 +104,8 @@ class AdminService {
     }
 
     public function updateField($targetUuid, $field, $newValue, $adminId) {
-        $allowedFields = ['username', 'email'];
+        // Se agregó 'role' a la lista
+        $allowedFields = ['username', 'email', 'role'];
         if (!in_array($field, $allowedFields)) return ['success' => false, 'message' => 'Campo no válido.'];
 
         $user = $this->getTargetUser($targetUuid);
@@ -127,6 +129,22 @@ class AdminService {
                 $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
                 $checkStmt->execute([':email' => $newValue, ':id' => $userId]);
                 if ($checkStmt->rowCount() > 0) return ['success' => false, 'message' => 'El correo ya está en uso por otro usuario.'];
+            } else if ($field === 'role') {
+                $allowedRoles = ['user', 'moderator', 'administrator', 'founder'];
+                if (!in_array($newValue, $allowedRoles)) return ['success' => false, 'message' => 'Rol no válido.'];
+
+                // Verificación de seguridad de roles
+                $stmtAdmin = $this->conn->prepare("SELECT role FROM users WHERE id = :id");
+                $stmtAdmin->execute([':id' => $adminId]);
+                $adminRole = $stmtAdmin->fetchColumn();
+
+                if ($adminRole !== 'founder' && ($oldValue === 'founder' || $newValue === 'founder')) {
+                    return ['success' => false, 'message' => 'Permisos insuficientes para asignar o modificar a un Fundador.'];
+                }
+
+                if ($userId === $adminId) {
+                    return ['success' => false, 'message' => 'No puedes modificar tu propio rol.'];
+                }
             }
 
             // Actualización directa

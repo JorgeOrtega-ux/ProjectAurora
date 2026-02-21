@@ -102,7 +102,7 @@ if (isset($dbConnection)) {
                         <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_manage') ?>" data-action="admin-manage-account">
                             <span class="material-symbols-rounded">manage_accounts</span>
                         </button>
-                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_role') ?>">
+                        <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_role') ?>" data-action="admin-manage-role">
                             <span class="material-symbols-rounded">admin_panel_settings</span>
                         </button>
                         <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_status') ?>">
