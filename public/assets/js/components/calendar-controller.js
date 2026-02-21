@@ -12,7 +12,7 @@ export class CalendarController {
     }
 
     init() {
-        // --- EVENTO CAPTURADO (Crucial para esquivar la detención de propagación de MainController) ---
+        // --- EVENTO CAPTURADO (Crucial para esquivar la detención de propagación de MainController al abrir) ---
         document.body.addEventListener('click', (e) => {
             const trigger = e.target.closest('[data-calendar-trigger="true"]');
             if (trigger) {
@@ -27,6 +27,7 @@ export class CalendarController {
             const prevBtn = e.target.closest('[data-cal-action="prev-month"]');
             if (prevBtn) {
                 e.preventDefault();
+                e.stopPropagation(); // FIX: Prevenir que MainController detecte un clic fuera al repintar el DOM
                 this.currentDate.setMonth(this.currentDate.getMonth() - 1);
                 this.renderCalendar();
                 return;
@@ -35,6 +36,7 @@ export class CalendarController {
             const nextBtn = e.target.closest('[data-cal-action="next-month"]');
             if (nextBtn) {
                 e.preventDefault();
+                e.stopPropagation(); // FIX: Prevenir que MainController cierre el módulo
                 this.currentDate.setMonth(this.currentDate.getMonth() + 1);
                 this.renderCalendar();
                 return;
@@ -44,6 +46,10 @@ export class CalendarController {
             const dayBtn = e.target.closest('.calendar-day:not(.disabled)');
             if (dayBtn) {
                 e.preventDefault();
+                e.stopPropagation(); // FIX CRÍTICO: Detener la propagación. Al hacer renderCalendar, 
+                                     // este botón se destruye. Si el evento llega a document, MainController 
+                                     // creerá que el clic fue fuera del panel y cerrará el calendario prematuramente.
+                                     
                 const day = parseInt(dayBtn.dataset.day);
                 const month = parseInt(dayBtn.dataset.month);
                 const year = parseInt(dayBtn.dataset.year);
@@ -60,6 +66,7 @@ export class CalendarController {
             const applyBtn = e.target.closest('[data-action="apply-calendar"]');
             if (applyBtn) {
                 e.preventDefault();
+                // Aquí no detenemos propagación porque queremos que cierre normalmente
                 this.applySelection();
                 return;
             }
@@ -73,7 +80,7 @@ export class CalendarController {
             }
         });
 
-        // 5. Validar inputs de tiempo (No permitir valores locos)
+        // 5. Validar inputs de tiempo (No permitir valores imposibles)
         document.body.addEventListener('change', (e) => {
             if (e.target.id === 'cal-hour') {
                 let v = parseInt(e.target.value);
@@ -152,10 +159,12 @@ export class CalendarController {
         for (let i = 1; i <= daysInMonth; i++) {
             const classes = [];
             
+            // Marca el día actual en la vida real
             if (year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) {
                 classes.push('today');
             }
             
+            // Marca el día que el usuario tiene seleccionado
             if (year === this.selectedDate.getFullYear() && month === this.selectedDate.getMonth() && i === this.selectedDate.getDate()) {
                 classes.push('selected');
             }

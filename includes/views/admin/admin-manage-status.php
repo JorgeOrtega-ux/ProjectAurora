@@ -40,21 +40,17 @@ if (!empty($targetUuid)) {
                 </div>
             </div>
         <?php else: 
-            // Preparación de variables actuales
             $isDeleted = ($targetUser['status'] === 'deleted');
             $isSuspended = ($targetUser['is_suspended'] == 1);
             $suspensionType = $targetUser['suspension_type'] ?? 'temporal';
             $deletionType = $targetUser['deletion_type'] ?? 'admin_banned';
             
-            // Formatear fecha para el input oculto y para la visualización inicial
             $displaySuspensionDate = 'Seleccionar fecha y hora';
             $suspensionExpiresAt = '';
             
             if (!empty($targetUser['suspension_expires_at'])) {
                 $d = new DateTime($targetUser['suspension_expires_at']);
                 $suspensionExpiresAt = $d->format('Y-m-d H:i:s');
-                
-                // Formato en español para UI: 21 Feb 2026, 16:30:00
                 $meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
                 $mes = $meses[(int)$d->format('n') - 1];
                 $displaySuspensionDate = $d->format('d') . ' ' . $mes . ' ' . $d->format('Y, H:i:s');
@@ -68,7 +64,6 @@ if (!empty($targetUuid)) {
             </div>
 
             <div class="component-card--grouped">
-                
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -86,7 +81,7 @@ if (!empty($targetUuid)) {
                                 <span class="component-dropdown-text"><?= $isDeleted ? 'Cuenta Eliminada' : 'Cuenta Activa' ?></span>
                                 <span class="material-symbols-rounded">expand_more</span>
                             </div>
-                            <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
+                            <div class="component-module component-module--display-overlay component-module--size-m component-module--dropdown-selector disabled">
                                 <div class="component-module-panel">
                                     <div class="pill-container"><div class="drag-handle"></div></div>
                                     <div class="component-module-panel-body component-module-panel-body--padded">
@@ -109,7 +104,6 @@ if (!empty($targetUuid)) {
 
                 <div id="cascade-deletion-data" class="component-stage-form <?= !$isDeleted ? 'disabled' : 'active' ?>" data-state="cascade-deletion">
                     <hr class="component-divider">
-                    
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
@@ -124,7 +118,7 @@ if (!empty($targetUuid)) {
                                     <span class="component-dropdown-text"><?= $deletionType === 'user_requested' ? 'Solicitado por el Usuario' : 'Decisión Administrativa' ?></span>
                                     <span class="material-symbols-rounded">expand_more</span>
                                 </div>
-                                <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
+                                <div class="component-module component-module--display-overlay component-module--size-m component-module--dropdown-selector disabled">
                                     <div class="component-module-panel">
                                         <div class="pill-container"><div class="drag-handle"></div></div>
                                         <div class="component-module-panel-body component-module-panel-body--padded">
@@ -144,14 +138,12 @@ if (!empty($targetUuid)) {
                             </div>
                         </div>
                     </div>
-
                     <hr class="component-divider">
-
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
                                 <h2 class="component-card__title">Notas de Eliminación</h2>
-                                <p class="component-card__description">Razón adicional, justificación o comentarios internos sobre la eliminación. (Opcional)</p>
+                                <p class="component-card__description">Razón adicional, justificación o comentarios internos sobre la eliminación.</p>
                             </div>
                         </div>
                         <div class="component-card__actions u-w-100">
@@ -164,7 +156,6 @@ if (!empty($targetUuid)) {
             </div>
 
             <div class="component-card--grouped u-mt-16 <?= $isDeleted ? 'disabled' : 'active' ?>" id="card-suspension-control" data-state="suspension-card">
-                
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -185,7 +176,6 @@ if (!empty($targetUuid)) {
 
                 <div id="cascade-suspension-data" class="component-stage-form <?= !$isSuspended ? 'disabled' : 'active' ?>" data-state="cascade-suspension">
                     <hr class="component-divider">
-                    
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
@@ -200,7 +190,7 @@ if (!empty($targetUuid)) {
                                     <span class="component-dropdown-text"><?= $suspensionType === 'permanent' ? 'Permanente' : 'Temporal' ?></span>
                                     <span class="material-symbols-rounded">expand_more</span>
                                 </div>
-                                <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
+                                <div class="component-module component-module--display-overlay component-module--size-m component-module--dropdown-selector disabled">
                                     <div class="component-module-panel">
                                         <div class="pill-container"><div class="drag-handle"></div></div>
                                         <div class="component-module-panel-body component-module-panel-body--padded">
@@ -231,8 +221,7 @@ if (!empty($targetUuid)) {
                                 </div>
                             </div>
                             <div class="component-card__actions">
-                                
-                                <div class="component-dropdown" style="max-width: 300px; width: 100%;">
+                                <div class="component-dropdown">
                                     <div class="component-input-wrapper--trigger" data-action="toggleModule" data-target="moduleCalendarSuspension" data-calendar-trigger="true" data-input-target="input-suspension-date" data-display-target="display-suspension-date">
                                         <span class="material-symbols-rounded trigger-select-icon">calendar_month</span>
                                         <span class="component-dropdown-text" id="display-suspension-date" style="flex: 1; text-align: left; padding-left: 8px;"><?= htmlspecialchars($displaySuspensionDate) ?></span>
@@ -240,25 +229,20 @@ if (!empty($targetUuid)) {
                                     </div>
                                     <input type="hidden" id="input-suspension-date" value="<?= htmlspecialchars($suspensionExpiresAt) ?>">
 
-                                    <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled" data-module="moduleCalendarSuspension" id="moduleCalendarSuspension">
+                                    <div class="component-module component-module--display-overlay component-module--size-m component-module--dropdown-selector disabled" data-module="moduleCalendarSuspension" id="moduleCalendarSuspension">
                                         <div class="component-module-panel">
                                             <div class="pill-container"><div class="drag-handle"></div></div>
                                             <div class="component-module-panel-body component-module-panel-body--padded">
-                                                
                                                 <div class="calendar-header">
                                                     <button type="button" class="component-button component-button--square-40" data-cal-action="prev-month"><span class="material-symbols-rounded">chevron_left</span></button>
                                                     <div class="calendar-title" id="calendar-title-display" style="font-weight: 600;">Mes Año</div>
                                                     <button type="button" class="component-button component-button--square-40" data-cal-action="next-month"><span class="material-symbols-rounded">chevron_right</span></button>
                                                 </div>
-                                                
                                                 <div class="calendar-weekdays">
                                                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sa</span>
                                                 </div>
-                                                
                                                 <div class="calendar-grid" id="calendar-days-grid"></div>
-                                                
                                                 <hr class="component-divider" style="margin: 16px 0;">
-                                                
                                                 <div class="calendar-time-picker">
                                                     <div class="time-col">
                                                         <label>Hora</label>
@@ -276,7 +260,6 @@ if (!empty($targetUuid)) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
                                             <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 8px;">
                                                 <button type="button" class="component-button" data-action="close-calendar">Cancelar</button>
                                                 <button type="button" class="component-button primary" data-action="apply-calendar">Aceptar</button>
@@ -284,17 +267,16 @@ if (!empty($targetUuid)) {
                                         </div>
                                     </div>
                                 </div>
-                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <hr class="component-divider">
-                    
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
                                 <h2 class="component-card__title">Motivo de la suspensión</h2>
-                                <p class="component-card__description">Razón que será visible para el usuario al intentar iniciar sesión. (Opcional)</p>
+                                <p class="component-card__description">Razón que será visible para el usuario al intentar iniciar sesión.</p>
                             </div>
                         </div>
                         <div class="component-card__actions u-w-100">
