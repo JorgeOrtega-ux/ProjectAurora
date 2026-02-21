@@ -1,7 +1,7 @@
 // public/assets/js/profile-controller.js
-import { ApiService } from './api-services.js';
-import { API_ROUTES } from './api-routes.js';
-import { Toast } from './toast-controller.js';
+import { ApiService } from '../api/api-services.js';
+import { API_ROUTES } from '../api/api-routes.js';
+import { Toast } from '../components/toast-controller.js';
 
 export class ProfileController {
     constructor() {

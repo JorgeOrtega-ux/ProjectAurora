@@ -5,16 +5,7 @@ $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
 $role = $isLoggedIn && isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'user';
 $styleGuest = $isLoggedIn ? 'display: none !important;' : 'display: flex !important;';
 $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !important;';
-
-// Obtener la Site Key desde variables de entorno. 
-// Tiene un fallback a '1x00...' por seguridad si no ha cargado bien el .env en desarrollo
-$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: '1x00000000000000000000AA';
 ?>
-
-<script>
-    window.APP_CONFIG = window.APP_CONFIG || {};
-    window.APP_CONFIG.turnstile_site_key = "<?= htmlspecialchars($turnstileSiteKey, ENT_QUOTES, 'UTF-8') ?>";
-</script>
 
 <div class="header">
     <div class="header-left">

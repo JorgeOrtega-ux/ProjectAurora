@@ -365,59 +365,5 @@ class Utils {
             Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
         }
     }
-
-    // ==========================================
-    // VALIDACIÓN CLOUDFLARE TURNSTILE
-    // ==========================================
-
-    public static function verifyTurnstile($cfToken, $ip) {
-        if (empty($cfToken)) {
-            Logger::system("Turnstile: Token vacío recibido desde el frontend.", Logger::LEVEL_WARNING);
-            return false;
-        }
-
-        $secretKey = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
-
-        if (empty($secretKey)) {
-            Logger::system("Turnstile: FALTA TURNSTILE_SECRET_KEY en el entorno (.env)", Logger::LEVEL_ERROR);
-            return false;
-        }
-
-        $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        $data = [
-            'secret' => $secretKey,
-            'response' => $cfToken,
-            'remoteip' => $ip
-        ];
-
-        // Usar cURL en lugar de file_get_contents para evitar bloqueos de entorno
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
-        // IMPORTANTE PARA LOCALHOST: Desactiva la verificación SSL estricta 
-        // Si lo subes a un servidor de producción real, puedes ponerlo en 'true'
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-        
-        $result = curl_exec($ch);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($result === FALSE) {
-            Logger::system("Turnstile: Fallo en la conexión a Cloudflare. Error cURL: " . $curlError, Logger::LEVEL_ERROR);
-            return false;
-        }
-
-        $response = json_decode($result, true);
-        
-        if (!isset($response['success']) || $response['success'] !== true) {
-            $errorCodes = isset($response['error-codes']) ? implode(", ", $response['error-codes']) : "Desconocido";
-            Logger::system("Turnstile: Cloudflare rechazó el token. Errores: " . $errorCodes, Logger::LEVEL_WARNING);
-            return false;
-        }
-
-        return true;
-    }
 }
 ?>

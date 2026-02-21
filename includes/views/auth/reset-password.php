@@ -20,8 +20,6 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 <label for="hp-reset">Deje este campo en blanco</label>
                 <input type="text" id="hp-reset" name="hp-reset" tabindex="-1" autocomplete="off">
             </div>
-            
-            <div id="turnstile-box-reset"></div>
 
             <div id="form-reset-password" class="component-stage-form" style="<?php echo $initialStyle; ?>">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">

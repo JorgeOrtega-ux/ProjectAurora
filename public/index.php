@@ -33,22 +33,6 @@ if ($isSpaRequest) {
     <link rel="stylesheet" type="text/css" href="assets/css/root.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     
-<script>
-    // Variable global para saber si Turnstile ya cargó
-    window.turnstileAPIReady = false;
-    
-    // Función global que Turnstile busca apenas se descarga
-    window.onTurnstileLoad = function() {
-        window.turnstileAPIReady = true;
-        // Si el AuthController ya definió su función, la llamamos
-        if (typeof window.initAppTurnstile === 'function') {
-            window.initAppTurnstile();
-        }
-    };
-</script>
-
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad" async defer></script>
-    
     <title>Project Aurora</title>
 </head>
 <body class="<?= $bodyClass; ?>">
@@ -80,11 +64,6 @@ if ($isSpaRequest) {
         // Entregamos tanto el lenguaje como las configuraciones globales del servidor al JS
         window.i18n = <?= json_encode(empty($translations) ? new stdClass() : $translations) ?>;
         
-        <?php 
-            // Inyectamos la llave del sitio de Turnstile
-            if(!isset($APP_CONFIG)) $APP_CONFIG = [];
-            $APP_CONFIG['turnstile_site_key'] = $_ENV['TURNSTILE_SITE_KEY'] ?? getenv('TURNSTILE_SITE_KEY') ?: '';
-        ?>
         window.APP_CONFIG = <?= json_encode($APP_CONFIG ?? new stdClass()) ?>;
         
         window.t = function(key, replacements = null) { 

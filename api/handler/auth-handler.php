@@ -30,15 +30,6 @@ return function($dbConnection, $action) {
         }
     }
 
-    // --- VALIDACIÓN CLOUDFLARE TURNSTILE ---
-    if (in_array($action, ['check_email', 'send_code', 'register', 'login', 'forgot_password', 'reset_password'])) {
-        if (!Utils::verifyTurnstile($data->cf_token ?? '', Utils::getClientIP())) {
-            Logger::system("Fallo de validación Turnstile en auth-handler para la acción: $action", Logger::LEVEL_WARNING);
-            Utils::sendResponse(['success' => false, 'message' => 'Verificación de seguridad fallida. Por favor, intenta de nuevo.']);
-        }
-    }
-    // -----------------------
-
     switch ($action) {
         case 'check_email':
             if (!empty($data->email)) {

@@ -11,8 +11,6 @@
                 <label for="hp-forgot">Deje este campo en blanco</label>
                 <input type="text" id="hp-forgot" name="hp-forgot" tabindex="-1" autocomplete="off">
             </div>
-            
-            <div id="turnstile-box-forgot"></div>
 
             <div id="form-forgot-password" class="component-stage-form">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">

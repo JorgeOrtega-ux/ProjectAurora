@@ -10,8 +10,6 @@
                 <label for="hp-login">Deje este campo en blanco</label>
                 <input type="text" id="hp-login" name="hp-login" tabindex="-1" autocomplete="off">
             </div>
-            
-            <div id="turnstile-box-login"></div>
 
             <div id="form-login" class="component-stage-form">
                 <input type="hidden" id="csrf_token" value="<?= $_SESSION['csrf_token'] ?? ''; ?>">

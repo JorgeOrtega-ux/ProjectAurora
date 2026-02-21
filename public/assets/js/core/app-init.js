@@ -1,13 +1,13 @@
 // public/assets/js/app-init.js
 import { MainController } from './main-controller.js';
 import { SpaRouter } from './spa-router.js';
-import { AuthController } from './auth-controller.js';
-import { ProfileController } from './profile-controller.js';
-import { PreferencesController } from './preferences-controller.js'; 
-import { DialogController } from './dialog-controller.js';
-import { TooltipController } from './tooltip-controller.js';
-import { TwoFactorController } from './2fa-controller.js'; 
-import { DevicesController } from './devices-controller.js'; // <-- Importado
+import { AuthController } from '../controllers/auth-controller.js';
+import { ProfileController } from '../controllers/profile-controller.js';
+import { PreferencesController } from '../controllers/preferences-controller.js'; 
+import { DialogController } from '../dialog-controller.js';
+import { TooltipController } from '../tooltip-controller.js';
+import { TwoFactorController } from '../controllers/2fa-controller.js'; 
+import { DevicesController } from '../controllers/devices-controller.js'; // <-- Importado
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();

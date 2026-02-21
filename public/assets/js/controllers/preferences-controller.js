@@ -1,6 +1,6 @@
 // public/assets/js/preferences-controller.js
-import { ApiService } from './api-services.js';
-import { API_ROUTES } from './api-routes.js';
+import { ApiService } from '../api/api-services.js';
+import { API_ROUTES } from '../api/api-routes.js';
 
 export class PreferencesController {
     constructor() {

@@ -1,28 +1,10 @@
-import { ApiService } from './api-services.js';
-import { API_ROUTES } from './api-routes.js';
-import { Toast } from './toast-controller.js';
+import { ApiService } from '../api/api-services.js';
+import { API_ROUTES } from '../api/api-routes.js';
+import { Toast } from '../components/toast-controller.js';
 
 export class AuthController {
     constructor(router) {
         this.router = router;
-        this.turnstileReady = false;
-        this.currentTurnstileId = undefined;
-
-        console.log("🛠️ [AuthController] Instanciado. Definiendo window.onTurnstileLoad...");
-
-        // Listener para la carga normal
-        window.onTurnstileLoad = () => {
-            console.log("🔥 [Turnstile] EVENTO GLOBAL onTurnstileLoad DISPARADO! La librería de CF se descargó.");
-            this.turnstileReady = true;
-            this.renderCurrentViewTurnstile();
-        };
-
-        // Respaldo: Si la librería ya había cargado antes
-        if (window.turnstile) {
-            console.warn("⚠️ [Turnstile] window.turnstile ya existía. Forzando bandera a true.");
-            this.turnstileReady = true;
-            this.renderCurrentViewTurnstile(); // <--- ¡ESTA ES LA LÍNEA MÁGICA QUE FALTABA!
-        }
 
         this.init();
         
@@ -31,122 +13,6 @@ export class AuthController {
         this.checkResetPasswordStage(window.location.pathname);
         this.checkForgotPasswordStage(window.location.pathname);
     }
-
-    // --- MÉTODOS TURNSTILE (CON LOGS EXTREMOS Y SOPORTE SPA) ---
-
-    renderTurnstile(containerId) {
-        console.log(`🔍 [Turnstile] Intentando renderizar en el contenedor: #${containerId}`);
-        
-        if (!window.turnstile) {
-            console.error("❌ [Turnstile] FATAL: window.turnstile NO está definido. El script de Cloudflare no se cargó o fue bloqueado.");
-            return;
-        }
-        
-        const box = document.getElementById(containerId);
-        if (!box) {
-            console.error(`❌ [Turnstile] FATAL: El div #${containerId} no existe en el DOM en este instante.`);
-            return;
-        }
-
-        console.log(`✅ [Turnstile] Contenedor #${containerId} encontrado en el HTML.`);
-
-        // Limpieza absoluta de instancias zombie
-        if (this.currentTurnstileId !== undefined) {
-            console.log(`🧹 [Turnstile] Limpiando instancia previa: ${this.currentTurnstileId}`);
-            try { turnstile.remove(this.currentTurnstileId); } catch(e) { console.warn("Fallo al remover:", e); }
-            this.currentTurnstileId = undefined;
-        }
-
-        // Destrucción de iframes residuales del router SPA y preparación visual
-        box.innerHTML = '';
-        box.style.border = "2px dashed yellow"; // Borde amarillo temporal
-        box.style.minHeight = "65px"; 
-        box.style.display = "block";
-
-        const siteKey = window.APP_CONFIG?.turnstile_site_key || '1x00000000000000000000AA';
-        console.log(`🔑 [Turnstile] Llamando a turnstile.render() con SiteKey: ${siteKey}`);
-        
-        try {
-            // Renderizado pasando el NODO real (box), no el string
-            this.currentTurnstileId = turnstile.render(box, {
-                sitekey: siteKey,
-                theme: 'auto',
-                callback: (token) => {
-                    console.log("🟢 [Turnstile] ¡ÉXITO! Cloudflare aprobó el token:", token.substring(0, 15) + "...");
-                    box.dataset.token = token; // Respaldo del token en el DOM
-                    box.style.border = "2px solid green"; // Borde verde si funcionó
-                },
-                'expired-callback': () => {
-                    console.warn("⚠️ [Turnstile] Token expirado, solicitando uno nuevo...");
-                    turnstile.reset(this.currentTurnstileId);
-                    box.dataset.token = '';
-                    box.style.border = "2px solid orange";
-                },
-                'error-callback': (err) => {
-                    console.error("❌ [Turnstile] ERROR interno reportado por Cloudflare:", err);
-                    box.style.border = "2px solid red";
-                }
-            });
-            console.log(`🎉 [Turnstile] turnstile.render() se ejecutó sin colapsar. Widget ID asignado: ${this.currentTurnstileId}`);
-        } catch (error) {
-            console.error("💥 [Turnstile] EXCEPCIÓN de JS al intentar renderizar:", error);
-        }
-    }
-
-    renderCurrentViewTurnstile() {
-        console.log("🚦 [Turnstile] renderCurrentViewTurnstile convocado. ¿Está turnstileReady?:", this.turnstileReady);
-        if (!this.turnstileReady) {
-            console.warn("⏳ [Turnstile] Rechazado. La bandera turnstileReady es false.");
-            return;
-        }
-        const url = window.location.pathname;
-        console.log("📍 [Turnstile] Evaluando ruta actual:", url);
-
-        if (url.includes('/login')) this.renderTurnstile('turnstile-box-login');
-        else if (url.includes('/register')) this.renderTurnstile('turnstile-box-register');
-        else if (url.includes('/forgot-password')) this.renderTurnstile('turnstile-box-forgot');
-        else if (url.includes('/reset-password')) this.renderTurnstile('turnstile-box-reset');
-        else console.log("⏭️ [Turnstile] La ruta actual no requiere captcha.");
-    }
-
-    getTurnstileToken() {
-        if (!window.turnstile || this.currentTurnstileId === undefined) {
-            console.warn("⚠️ [Turnstile] getTurnstileToken llamado pero el widget no existe.");
-            return '';
-        }
-        
-        // Intentamos obtenerlo de forma oficial
-        let token = turnstile.getResponse(this.currentTurnstileId);
-        
-        // Fallback: Si la API de Turnstile se "marea" por el SPA, lo sacamos del DOM
-        if (!token) {
-            console.warn("⚠️ [Turnstile] turnstile.getResponse devolvió vacío. Buscando respaldo en el dataset del DOM...");
-            const urls = ['turnstile-box-login', 'turnstile-box-register', 'turnstile-box-forgot', 'turnstile-box-reset'];
-            for (let id of urls) {
-                const box = document.getElementById(id);
-                if (box && box.dataset.token) {
-                    token = box.dataset.token;
-                    console.log("✅ [Turnstile] Respaldo recuperado del DOM.");
-                    break;
-                }
-            }
-        }
-        return token || '';
-    }
-
-    resetTurnstile() {
-        if (window.turnstile && this.currentTurnstileId !== undefined) {
-            turnstile.reset(this.currentTurnstileId);
-            // Limpiar también los respaldos del DOM
-            const urls = ['turnstile-box-login', 'turnstile-box-register', 'turnstile-box-forgot', 'turnstile-box-reset'];
-            for (let id of urls) {
-                const box = document.getElementById(id);
-                if (box) box.dataset.token = '';
-            }
-        }
-    }
-
-    // --- FIN MÉTODOS TURNSTILE ---
 
     init() {
         document.body.addEventListener('keydown', (e) => {
@@ -198,7 +64,6 @@ export class AuthController {
             this.checkRegisterStage(e.detail.url);
             this.checkResetPasswordStage(e.detail.url);
             this.checkForgotPasswordStage(e.detail.url);
-            this.renderCurrentViewTurnstile();
         });
     }
 
@@ -293,8 +158,6 @@ export class AuthController {
 
     async handleRegisterStage1() {
         const errorDiv = document.getElementById('register-error-1');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const emailInput = document.getElementById('reg-email');
         const passwordInput = document.getElementById('reg-password');
@@ -331,8 +194,7 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile();
+            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email, csrf_token: csrfToken, hp_field });
 
             if (res.success) {
                 sessionStorage.setItem('reg_email', email);
@@ -340,15 +202,12 @@ export class AuthController {
                 this.router.navigate('/ProjectAurora/register/aditional-data'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t('js.auth.err_conn')); 
         } finally { this.setLoading(btn, false); }
     }
 
     async handleRegisterStage2() {
         const errorDiv = document.getElementById('register-error-2');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const usernameInput = document.getElementById('reg-username');
         const btn = document.getElementById('btn-next-2');
@@ -372,23 +231,19 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile(); 
+            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken, hp_field });
 
             if (res.success) {
                 sessionStorage.setItem('reg_username', user);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t('js.auth.err_gen_code')); 
         } finally { this.setLoading(btn, false); }
     }
 
     async handleRegisterFinal() {
         const errorDiv = document.getElementById('register-error-3');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const code = document.getElementById('reg-code').value;
         const btn = document.getElementById('btn-register-final');
@@ -407,26 +262,22 @@ export class AuthController {
 
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { 
-                email, code, csrf_token: csrfToken, hp_field, cf_token,
+                email, code, csrf_token: csrfToken, hp_field,
                 language: prefsLocal.language,
                 open_links_new_tab: prefsLocal.openLinksNewTab
             });
-            this.resetTurnstile();
 
             if (res.success) {
                 sessionStorage.clear(); 
                 window.location.href = '/ProjectAurora/';
             } else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); 
         }
     }
 
     async handleLogin() {
         const errorDiv = document.getElementById('login-error');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const btn = document.getElementById('btn-login'); 
         const email = document.getElementById('login-email').value;
@@ -443,8 +294,7 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile(); 
+            const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken, hp_field });
 
             if (res.success) {
                 if (res.requires_2fa) {
@@ -458,7 +308,6 @@ export class AuthController {
                 this.setLoading(btn, false); 
             }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t ? window.t('js.auth.err_conn') : 'Error de conexión'); 
             this.setLoading(btn, false); 
         }
@@ -512,8 +361,6 @@ export class AuthController {
 
     async handleForgotPassword() {
         const errorDiv = document.getElementById('forgot-error');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const email = document.getElementById('forgot-email').value;
         const btn = document.getElementById('btn-forgot-password');
@@ -526,15 +373,13 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile();
+            const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email, csrf_token: csrfToken, hp_field });
 
             if (res.success) {
                 Toast.show(window.t('js.auth.success_forgot') || 'Enlace de recuperación enviado', 'success');
                 document.getElementById('forgot-email').value = '';
             } else { this.showError(errorDiv, window.t(res.message)); }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t('js.auth.err_process')); 
         } finally { this.setLoading(btn, false); }
     }
@@ -542,8 +387,6 @@ export class AuthController {
     async handleResetPassword() {
         const errorDiv = document.getElementById('reset-error');
         const form = document.getElementById('form-reset-password');
-        const cf_token = this.getTurnstileToken();
-        if (!cf_token) { this.showError(errorDiv, "Verificando seguridad... Por favor, espera un segundo y vuelve a intentar."); return; }
 
         const token = new URLSearchParams(window.location.search).get('token');
         const pass1 = document.getElementById('reset-password-1').value;
@@ -568,8 +411,7 @@ export class AuthController {
 
         this.setLoading(btn, true);
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.RESET_PASSWORD, { token, password: pass1, csrf_token: csrfToken, hp_field, cf_token });
-            this.resetTurnstile();
+            const res = await ApiService.post(API_ROUTES.AUTH.RESET_PASSWORD, { token, password: pass1, csrf_token: csrfToken, hp_field });
 
             if (res.success) {
                 successDiv.style.display = 'block'; btn.style.display = 'none';
@@ -579,7 +421,6 @@ export class AuthController {
                 this.setLoading(btn, false); 
             }
         } catch (error) { 
-            this.resetTurnstile();
             this.showError(errorDiv, window.t('js.auth.err_update')); 
             this.setLoading(btn, false); 
         }
