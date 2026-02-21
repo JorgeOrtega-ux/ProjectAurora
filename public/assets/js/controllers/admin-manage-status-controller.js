@@ -9,70 +9,102 @@ export class AdminManageStatusController {
     }
 
     init() {
-        // Escuchar cambios en los inputs/selects (Delegación de eventos)
+        // Escuchar clics (Delegación de eventos)
+        document.body.addEventListener('click', (e) => {
+            const view = document.getElementById('admin-manage-status-view');
+            if (!view) return;
+
+            // Selección de opción dentro de un dropdown personalizado
+            const optionSelect = e.target.closest('[data-action="status-select-option"]');
+            if (optionSelect) {
+                e.preventDefault();
+                this.handleOptionSelect(optionSelect);
+                return;
+            }
+
+            // Click en guardar
+            const btnSave = e.target.closest('#btn-save-status-changes');
+            if (btnSave) {
+                e.preventDefault();
+                this.saveStatusChanges(btnSave);
+            }
+        });
+
+        // Escuchar cambios (checkbox)
         document.body.addEventListener('change', (e) => {
             const view = document.getElementById('admin-manage-status-view');
             if (!view) return;
 
-            // 1. Cambio en "Estado de Existencia" (Activa / Eliminada)
-            if (e.target.id === 'select-lifecycle-status') {
-                this.handleLifecycleChange(e.target.value);
-            }
-
-            // 2. Cambio en el Toggle "Suspensión de Acceso"
             if (e.target.id === 'toggle-is-suspended') {
                 this.handleSuspensionToggle(e.target.checked);
-            }
-
-            // 3. Cambio en el "Tipo de Suspensión" (Temporal / Permanente)
-            if (e.target.id === 'select-suspension-type') {
-                this.handleSuspensionTypeChange(e.target.value);
-            }
-        });
-
-        // Escuchar el click en el botón de "Guardar Cambios"
-        document.body.addEventListener('click', (e) => {
-            const btnSave = e.target.closest('#btn-save-status-changes');
-            if (btnSave && document.getElementById('admin-manage-status-view')) {
-                e.preventDefault();
-                this.saveStatusChanges(btnSave);
             }
         });
     }
 
     // ==========================================
-    // LÓGICA DE UI EN CASCADA
+    // LÓGICA DE UI Y DROPDOWNS
     // ==========================================
+
+    handleOptionSelect(option) {
+        const wrapper = option.closest('.component-dropdown');
+        const module = wrapper.querySelector('.component-module');
+        
+        // Actualizar el texto del trigger
+        const textDisplay = wrapper.querySelector('.component-dropdown-text');
+        textDisplay.textContent = option.dataset.label;
+        
+        // Actualizar el ícono del trigger
+        const iconDisplay = wrapper.querySelector('.trigger-select-icon');
+        const optionIcon = option.querySelector('.component-menu-link-icon span');
+        if (iconDisplay && optionIcon) {
+            iconDisplay.textContent = optionIcon.textContent;
+        }
+        
+        // Actualizar estados visuales de la lista
+        module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
+        option.classList.add('active');
+        
+        // Asignar valor final al componente padre (wrapper)
+        const value = option.dataset.value;
+        wrapper.dataset.value = value;
+        
+        // Cerrar módulo
+        module.classList.add('disabled');
+
+        // Disparar lógica en cascada según el tipo de campo
+        const target = option.dataset.target;
+        if (target === 'lifecycle') {
+            this.handleLifecycleChange(value);
+        } else if (target === 'suspension-type') {
+            this.handleSuspensionTypeChange(value);
+        }
+    }
 
     handleLifecycleChange(status) {
         const deletionData = document.getElementById('cascade-deletion-data');
         const suspensionCard = document.getElementById('card-suspension-control');
 
         if (status === 'deleted') {
-            // Si se elimina, mostramos por qué se elimina y bloqueamos la tarjeta de suspensión
-            if (deletionData) deletionData.classList.remove('disabled');
-            if (suspensionCard) suspensionCard.classList.add('disabled');
+            if (deletionData) deletionData.classList.replace('disabled', 'active');
+            if (suspensionCard) suspensionCard.classList.replace('active', 'disabled');
         } else {
-            // Si está activa, ocultamos los datos de eliminación y habilitamos la suspensión
-            if (deletionData) deletionData.classList.add('disabled');
-            if (suspensionCard) suspensionCard.classList.remove('disabled');
+            if (deletionData) deletionData.classList.replace('active', 'disabled');
+            if (suspensionCard) suspensionCard.classList.replace('disabled', 'active');
         }
     }
 
     handleSuspensionToggle(isSuspended) {
         const suspensionData = document.getElementById('cascade-suspension-data');
         if (isSuspended) {
-            // Si se suspende, se despliegan las opciones extra
-            if (suspensionData) suspensionData.classList.remove('disabled');
+            if (suspensionData) suspensionData.classList.replace('disabled', 'active');
         } else {
-            if (suspensionData) suspensionData.classList.add('disabled');
+            if (suspensionData) suspensionData.classList.replace('active', 'disabled');
         }
     }
 
     handleSuspensionTypeChange(type) {
         const dateSection = document.getElementById('cascade-suspension-date');
         if (type === 'temporal') {
-            // Si es temporal, mostrar el selector de fecha
             if (dateSection) dateSection.style.display = 'flex';
         } else {
             if (dateSection) dateSection.style.display = 'none';
@@ -89,15 +121,15 @@ export class AdminManageStatusController {
 
         if (!targetUuid) return;
 
-        // Recolectar el estado actual de los inputs
-        const status = document.getElementById('select-lifecycle-status')?.value || 'active';
+        // Leer valores directamente desde la estructura de los nuevos Dropdowns
+        const status = document.getElementById('dropdown-lifecycle-status')?.dataset.value || 'active';
         const isSuspended = document.getElementById('toggle-is-suspended')?.checked ? 1 : 0;
         
-        const suspensionType = document.getElementById('select-suspension-type')?.value;
+        const suspensionType = document.getElementById('dropdown-suspension-type')?.dataset.value;
         const suspensionDate = document.getElementById('input-suspension-date')?.value;
         const suspensionReason = document.getElementById('input-suspension-reason')?.value;
         
-        const deletionType = document.getElementById('select-deletion-type')?.value;
+        const deletionType = document.getElementById('dropdown-deletion-type')?.dataset.value;
         const deletionReason = document.getElementById('input-deletion-reason')?.value;
 
         // Validación Frontend Simple
