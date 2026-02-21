@@ -21,9 +21,22 @@ if ($isSpaRequest) {
     $loader->load($currentView);
     exit; 
 }
+
+// --- PREVENIR PARPADEO DE TEMA (SSR) ---
+$themeAttr = '';
+if (isset($_COOKIE['aurora_prefs'])) {
+    $cookiePrefs = json_decode(urldecode($_COOKIE['aurora_prefs']), true);
+    if (is_array($cookiePrefs) && isset($cookiePrefs['theme'])) {
+        if ($cookiePrefs['theme'] === 'light') {
+            $themeAttr = ' data-theme="light"';
+        } elseif ($cookiePrefs['theme'] === 'dark') {
+            $themeAttr = ' data-theme="dark"';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
-<html lang="<?= htmlspecialchars($_COOKIE['aurora_lang'] ?? 'en') ?>">
+<html lang="<?= htmlspecialchars($_COOKIE['aurora_lang'] ?? 'en') ?>"<?= $themeAttr ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,6 +47,25 @@ if ($isSpaRequest) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     
     <title>Project Aurora</title>
+
+    <script>
+        (function() {
+            try {
+                // Si el servidor ya inyectó el tema por cookie, no hacemos nada para ahorrar rendimiento
+                if (!document.documentElement.hasAttribute('data-theme')) {
+                    var localPrefs = localStorage.getItem('aurora_prefs');
+                    if (localPrefs) {
+                        var prefs = JSON.parse(localPrefs);
+                        if (prefs.theme === 'dark') {
+                            document.documentElement.setAttribute('data-theme', 'dark');
+                        } else if (prefs.theme === 'light') {
+                            document.documentElement.setAttribute('data-theme', 'light');
+                        }
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="<?= $bodyClass; ?>">
     <div class="page-wrapper">
@@ -51,7 +83,7 @@ if ($isSpaRequest) {
                         <?php include __DIR__ . '/../includes/modules/moduleSurface.php'; ?>
                     <?php endif; ?>
                     
-                    <div class="general-content-scrolleable" id="app-router-outlet">
+                    <div class="general-content-scrolleable overflow-y" id="app-router-outlet">
                         <?php $loader->load($currentView); ?>
                     </div>
                 </div>
