@@ -746,4 +746,119 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 /* Ajuste responsive para los triggers (fecha y dropdowns) */
 @media (max-width: 465px) {
     .component-input-wrapper--trigger { max-width: 100%; }
+}/* =========================================
+   COMPONENT: CALENDAR (CUSTOM MODULE)
+   ========================================= */
+.calendar-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 12px; 
+    width: 100%; /* Asegura que no rebase el contenedor */
+}
+
+.calendar-title { 
+    font-size: 15px; 
+    text-transform: capitalize; 
+    color: var(--text-primary); 
+    flex: 1; 
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Si el mes es muy largo, no rompe el diseño */
+}
+
+.calendar-weekdays { 
+    display: grid; 
+    grid-template-columns: repeat(7, 1fr); /* 7 columnas exactas proporcionales */
+    text-align: center; 
+    font-size: 12px; 
+    font-weight: 600; 
+    color: var(--text-secondary); 
+    margin-bottom: 8px; 
+    width: 100%;
+}
+
+.calendar-grid { 
+    display: grid; 
+    grid-template-columns: repeat(7, 1fr); 
+    gap: 2px; /* Gap reducido para que quepa en pantallas pequeñas sin problemas */
+    width: 100%;
+}
+
+.calendar-day { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    aspect-ratio: 1; /* Mantiene círculos perfectos sin importar el ancho */
+    border-radius: 50%; 
+    font-size: 13px; /* Tamaño optimizado */
+    cursor: pointer; 
+    color: var(--text-primary); 
+    transition: background-color 0.2s, color 0.2s; 
+    border: none; 
+    background: transparent; 
+    width: 100%; /* Ocupa exactamente el espacio de la celda de grid */
+    padding: 0;
+}
+
+.calendar-day:hover:not(.disabled) { background-color: var(--bg-hover-light); }
+.calendar-day.selected { background-color: var(--action-primary); color: var(--text-inverse); font-weight: 600; }
+.calendar-day.today { border: 1px solid var(--action-primary); }
+.calendar-day.disabled { color: var(--text-tertiary); cursor: not-allowed; }
+.calendar-day.other-month { color: var(--text-tertiary); }
+
+/* --- SELECTOR DE TIEMPO ESCALABLE --- */
+.calendar-time-picker { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 6px; 
+    width: 100%;
+}
+
+.calendar-time-picker .time-col { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 4px; 
+    flex: 1; /* Hace que las columnas se distribuyan uniformemente */
+}
+
+.calendar-time-picker label { 
+    font-size: 11px; 
+    color: var(--text-secondary); 
+    text-transform: uppercase; 
+    font-weight: 600; 
+}
+
+.time-input::-webkit-outer-spin-button,
+.time-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.time-input {
+  -moz-appearance: textfield;
+  text-align: center;
+  padding: 8px 4px !important;
+  font-size: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-input);
+  width: 100%; /* Ocupa el 100% de la columna */
+  max-width: 50px; /* Límite máximo para que no se vea gigante */
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.time-input:focus {
+    border-color: var(--border-color-hover);
+    outline: none;
+}
+
+.calendar-time-picker span.time-separator {
+    font-weight: bold;
+    margin-top: 14px;
+    color: var(--text-primary);
 }
