@@ -8,6 +8,7 @@ return [
 
     // --- RUTAS GUEST ---
     '/login' => ['view' => 'login.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/login/verification-2fa' => ['view' => 'login.php', 'access' => 'guest', 'layout' => 'auth'],
     '/register' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],
     '/register/aditional-data' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],
     '/register/verification-account' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],

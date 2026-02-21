@@ -59,7 +59,7 @@ return function($dbConnection, $action) {
     $data = Utils::getJsonInput();
 
     // --- VALIDACIÓN CSRF USANDO UTILS ---
-    if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password'])) {
+    if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password', 'verify_2fa'])) {
         // Si el token no es válido, se bloquea la petición
         if (!Utils::validateCSRF($data->csrf_token ?? '')) {
             Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
@@ -116,6 +116,14 @@ return function($dbConnection, $action) {
                 Utils::sendResponse($auth->login($data->email, $data->password));
             } else {
                 Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            break;
+            
+        case 'verify_2fa':
+            if (!empty($data->token) && !empty($data->code)) {
+                Utils::sendResponse($auth->verify2FACode($data->token, $data->code));
+            } else {
+                Utils::sendResponse(['success' => false, 'message' => 'El token y el código son requeridos.']);
             }
             break;
 

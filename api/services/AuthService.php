@@ -103,6 +103,49 @@ class AuthService {
         }
     }
 
+    // Validador nativo de TOTP
+    private function verifyTOTP($secret, $code) {
+        if (empty($secret) || empty($code)) return false;
+        
+        $base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $base32charsFlipped = array_flip(str_split($base32chars));
+        $secret = strtoupper($secret);
+        
+        $paddingCharCount = substr_count($secret, '=');
+        $allowedValues = array(6, 4, 3, 1, 0);
+        if (!in_array($paddingCharCount, $allowedValues)) return false;
+        
+        $secret = str_replace('=', '', $secret);
+        $secret = str_split($secret);
+        $binaryString = "";
+        
+        foreach ($secret as $char) {
+            if (!isset($base32charsFlipped[$char])) return false;
+            $binaryString .= str_pad(base_convert($base32charsFlipped[$char], 10, 2), 5, '0', STR_PAD_LEFT);
+        }
+        
+        $binaryArray = str_split($binaryString, 8);
+        $decodedSecret = "";
+        foreach ($binaryArray as $bin) {
+            $decodedSecret .= chr(bindec($bin));
+        }
+        
+        $tm = floor(time() / 30);
+        for ($i = -1; $i <= 1; $i++) {
+            $time = pack('N*', 0) . pack('N*', $tm + $i);
+            $hash = hash_hmac('sha1', $time, $decodedSecret, true);
+            $offset = ord(substr($hash, -1)) & 0x0F;
+            
+            $hashPart = substr($hash, $offset, 4);
+            $value = unpack('N', $hashPart);
+            $value = $value[1] & 0x7FFFFFFF;
+            
+            $calculatedCode = str_pad($value % 1000000, 6, '0', STR_PAD_LEFT);
+            if ($calculatedCode === $code) return true;
+        }
+        return false;
+    }
+
     public function checkEmail($email) {
         $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
@@ -200,7 +243,6 @@ class AuthService {
 
             $lang = $data->language ?? 'en-us';
             $openLinks = isset($data->open_links_new_tab) && $data->open_links_new_tab ? 1 : 0;
-            // Configuración de accesibilidad por defecto
             $theme = $data->theme ?? 'system';
             $extendedAlerts = isset($data->extended_alerts) && $data->extended_alerts ? 1 : 0;
 
@@ -246,7 +288,8 @@ class AuthService {
             return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente. Intenta de nuevo en 15 minutos.'];
         }
 
-        $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+        // CORREGIDO: Se cambia "backup_codes" por "two_factor_recovery_codes"
+        $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':correo', $email);
         $stmt->execute();
@@ -255,6 +298,21 @@ class AuthService {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (password_verify($password, $row['contrasena'])) {
                 
+                // --- INTEGRACIÓN 2FA ---
+                if (isset($row['two_factor_enabled']) && $row['two_factor_enabled'] == 1) {
+                    $tempToken = bin2hex(random_bytes(32));
+                    $_SESSION['temp_2fa_token'] = $tempToken;
+                    $_SESSION['temp_2fa_user_id'] = $row['id'];
+                    
+                    return [
+                        'success' => true,
+                        'requires_2fa' => true,
+                        'message' => 'Verificación en dos pasos requerida.',
+                        'token' => $tempToken
+                    ];
+                }
+                // -----------------------
+
                 $this->resetAttempts('login');
 
                 $_SESSION['user_id'] = $row['id'];
@@ -283,6 +341,71 @@ class AuthService {
         
         $this->recordFailedAttempt('login');
         return ['success' => false, 'message' => 'Correo o contraseña incorrectos.'];
+    }
+
+    public function verify2FACode($token, $code) {
+        if (!$this->checkRateLimit('login')) {
+            return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente.'];
+        }
+
+        if (!isset($_SESSION['temp_2fa_token']) || !isset($_SESSION['temp_2fa_user_id']) || $_SESSION['temp_2fa_token'] !== $token) {
+            return ['success' => false, 'message' => 'Token de sesión inválido o expirado. Vuelve a iniciar sesión.'];
+        }
+
+        $userId = $_SESSION['temp_2fa_user_id'];
+        // CORREGIDO: Se cambia "backup_codes" por "two_factor_recovery_codes"
+        $query = "SELECT id, uuid, nombre, correo, avatar_path, role, two_factor_secret, two_factor_recovery_codes FROM " . $this->table_name . " WHERE id = :id LIMIT 0,1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $userId);
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $isValid = false;
+            $code = trim($code);
+
+            // 1. Verificamos si es un código temporal de la App Authenticator (TOTP)
+            if (strlen($code) === 6 && is_numeric($code)) {
+                $isValid = $this->verifyTOTP($row['two_factor_secret'], $code);
+            }
+            
+            // 2. Si falló el TOTP, validamos contra los códigos de respaldo (Backup Codes)
+            if (!$isValid && !empty($row['two_factor_recovery_codes'])) {
+                $backupCodes = json_decode($row['two_factor_recovery_codes'], true);
+                if (is_array($backupCodes) && in_array($code, $backupCodes)) {
+                    $isValid = true;
+                    // Invalida el código de backup usado
+                    $backupCodes = array_values(array_diff($backupCodes, [$code]));
+                    $updStmt = $this->conn->prepare("UPDATE " . $this->table_name . " SET two_factor_recovery_codes = :codes WHERE id = :id");
+                    $updStmt->execute([':codes' => json_encode($backupCodes), ':id' => $userId]);
+                }
+            }
+
+            if ($isValid) {
+                $this->resetAttempts('login');
+                
+                $_SESSION['user_id'] = $row['id'];
+                $_SESSION['user_uuid'] = $row['uuid'];
+                $_SESSION['user_name'] = $row['nombre'];
+                $_SESSION['user_email'] = $row['correo'];
+                $_SESSION['user_avatar'] = $row['avatar_path'];
+                $_SESSION['user_role'] = $row['role'];
+
+                unset($_SESSION['temp_2fa_token']);
+                unset($_SESSION['temp_2fa_user_id']);
+
+                $prefStmt = $this->conn->prepare("SELECT language FROM user_preferences WHERE user_id = :uid");
+                $prefStmt->execute([':uid' => $row['id']]);
+                $userLang = $prefStmt->fetchColumn() ?: 'es-latam';
+                setcookie('aurora_lang', $userLang, time() + 31536000, '/');
+
+                return ['success' => true, 'message' => 'Inicio de sesión exitoso.'];
+            }
+        }
+        
+        $this->recordFailedAttempt('login');
+        return ['success' => false, 'message' => 'Código de autenticación incorrecto.'];
     }
 
     public function logout() {

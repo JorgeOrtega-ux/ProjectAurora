@@ -7,6 +7,7 @@ export class AuthController {
         this.router = router;
         this.init();
         
+        this.checkLoginStage(window.location.pathname);
         this.checkRegisterStage(window.location.pathname);
         this.checkResetPasswordStage(window.location.pathname);
     }
@@ -15,6 +16,7 @@ export class AuthController {
         document.body.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 if (e.target.closest('#form-login')) { e.preventDefault(); this.handleLogin(); }
+                else if (e.target.closest('#form-login-2fa')) { e.preventDefault(); this.handleVerify2FA(); }
                 else if (e.target.closest('#form-register-1')) { e.preventDefault(); this.handleRegisterStage1(); }
                 else if (e.target.closest('#form-register-2')) { e.preventDefault(); this.handleRegisterStage2(); }
                 else if (e.target.closest('#form-register-3')) { e.preventDefault(); this.handleRegisterFinal(); }
@@ -25,6 +27,7 @@ export class AuthController {
 
         document.body.addEventListener('click', (e) => {
             if (e.target.closest('#btn-login')) { e.preventDefault(); this.handleLogin(); return; }
+            if (e.target.closest('#btn-verify-2fa')) { e.preventDefault(); this.handleVerify2FA(); return; }
             if (e.target.closest('#btn-next-1')) { e.preventDefault(); this.handleRegisterStage1(); return; }
             if (e.target.closest('#btn-next-2')) { e.preventDefault(); this.handleRegisterStage2(); return; }
             if (e.target.closest('#btn-register-final')) { e.preventDefault(); this.handleRegisterFinal(); return; }
@@ -47,10 +50,15 @@ export class AuthController {
                 this.router.navigate('/ProjectAurora/register');
             } else if (e.target.closest('#btn-back-2')) {
                 this.router.navigate('/ProjectAurora/register/aditional-data');
+            } else if (e.target.closest('#btn-back-login')) {
+                e.preventDefault();
+                sessionStorage.removeItem('temp_2fa_token');
+                this.router.navigate('/ProjectAurora/login');
             }
         });
 
         window.addEventListener('viewLoaded', (e) => {
+            this.checkLoginStage(e.detail.url);
             this.checkRegisterStage(e.detail.url);
             this.checkResetPasswordStage(e.detail.url);
         });
@@ -71,6 +79,34 @@ export class AuthController {
         const jsonContent = `Route Error (${httpCode} ): {\n  "error": {\n    "message": "${message}",\n    "type": "${type}",\n    "param": null,\n    "code": "${codeStr}"\n  }\n}`;
         codeBox.textContent = jsonContent;
         container.style.display = 'flex';
+    }
+
+    checkLoginStage(url) {
+        if (!url.includes('/ProjectAurora/login')) return;
+        
+        const stage1 = document.getElementById('form-login');
+        const stage2 = document.getElementById('form-login-2fa');
+        if (!stage1 || !stage2) return;
+
+        const title = document.getElementById('auth-title');
+        const subtitle = document.getElementById('auth-subtitle');
+
+        stage1.style.display = 'none';
+        stage2.style.display = 'none';
+
+        if (url.endsWith('/login/verification-2fa')) {
+            const tempToken = sessionStorage.getItem('temp_2fa_token');
+            if (!tempToken) {
+                this.router.navigate('/ProjectAurora/login');
+                return;
+            }
+            stage2.style.display = 'flex';
+            if (title) { title.textContent = 'Autenticación 2FA'; subtitle.textContent = 'Protección en dos pasos habilitada'; }
+            setTimeout(() => document.getElementById('login-2fa-code').focus(), 50);
+        } else {
+            stage1.style.display = 'flex';
+            if (title) { title.textContent = window.t ? window.t('login.title') : 'Iniciar Sesión'; subtitle.textContent = window.t ? window.t('login.subtitle') : 'Bienvenido de vuelta'; }
+        }
     }
 
     checkRegisterStage(url) {
@@ -273,7 +309,7 @@ export class AuthController {
         const errorDiv = document.getElementById('login-error');
 
         if (!email || !password) {
-            this.showError(errorDiv, window.t('js.auth.err_fields'));
+            this.showError(errorDiv, window.t ? window.t('js.auth.err_fields') : 'Completa todos los campos');
             return;
         }
 
@@ -282,9 +318,53 @@ export class AuthController {
 
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken });
-            if (res.success) window.location.href = '/ProjectAurora/'; 
-            else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, window.t('js.auth.err_conn')); this.setLoading(btn, false); }
+            
+            if (res.success) {
+                if (res.requires_2fa) {
+                    sessionStorage.setItem('temp_2fa_token', res.token);
+                    this.router.navigate('/ProjectAurora/login/verification-2fa');
+                } else {
+                    window.location.href = '/ProjectAurora/'; 
+                }
+            } else { 
+                this.showError(errorDiv, window.t ? window.t(res.message) : res.message); 
+                this.setLoading(btn, false); 
+            }
+        } catch (error) { 
+            this.showError(errorDiv, window.t ? window.t('js.auth.err_conn') : 'Error de conexión'); 
+            this.setLoading(btn, false); 
+        }
+    }
+
+    async handleVerify2FA() {
+        const codeInput = document.getElementById('login-2fa-code');
+        const code = codeInput.value.trim();
+        const token = sessionStorage.getItem('temp_2fa_token');
+        const btn = document.getElementById('btn-verify-2fa');
+        const errorDiv = document.getElementById('login-2fa-error');
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+
+        if (!code) { 
+            this.showError(errorDiv, 'Por favor, ingresa el código.'); 
+            return; 
+        }
+
+        this.setLoading(btn, true);
+        this.hideError(errorDiv);
+
+        try {
+            const res = await ApiService.post(API_ROUTES.AUTH.VERIFY_2FA, { token, code, csrf_token: csrfToken });
+            if (res.success) {
+                sessionStorage.removeItem('temp_2fa_token');
+                window.location.href = '/ProjectAurora/';
+            } else {
+                this.showError(errorDiv, window.t ? window.t(res.message) : res.message);
+                this.setLoading(btn, false);
+            }
+        } catch (error) {
+            this.showError(errorDiv, 'Error de conexión.');
+            this.setLoading(btn, false);
+        }
     }
 
     async handleLogout(btn) {

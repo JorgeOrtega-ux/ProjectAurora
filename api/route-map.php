@@ -5,6 +5,7 @@ return [
     'auth.send_code'    => ['file' => 'handler/auth-handler.php', 'action' => 'send_code'],
     'auth.register'     => ['file' => 'handler/auth-handler.php', 'action' => 'register'],
     'auth.login'        => ['file' => 'handler/auth-handler.php', 'action' => 'login'],
+    'auth.verify_2fa'   => ['file' => 'handler/auth-handler.php', 'action' => 'verify_2fa'],
     'auth.logout'       => ['file' => 'handler/auth-handler.php', 'action' => 'logout'],
     'auth.check_session'=> ['file' => 'handler/auth-handler.php', 'action' => 'check_session'],
     'auth.forgot_password' => ['file' => 'handler/auth-handler.php', 'action' => 'forgot_password'],

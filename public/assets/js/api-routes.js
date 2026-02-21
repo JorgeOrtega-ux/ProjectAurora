@@ -7,6 +7,7 @@ export const API_ROUTES = {
         SEND_CODE: `${BASE_PATH}/api/auth.send_code`,
         REGISTER: `${BASE_PATH}/api/auth.register`,
         LOGIN: `${BASE_PATH}/api/auth.login`,
+        VERIFY_2FA: `${BASE_PATH}/api/auth.verify_2fa`,
         LOGOUT: `${BASE_PATH}/api/auth.logout`,
         CHECK_SESSION: `${BASE_PATH}/api/auth.check_session`,
         FORGOT_PASSWORD: `${BASE_PATH}/api/auth.forgot_password`,
