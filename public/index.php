@@ -33,7 +33,21 @@ if ($isSpaRequest) {
     <link rel="stylesheet" type="text/css" href="assets/css/root.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad" async defer></script>
+<script>
+    // Variable global para saber si Turnstile ya cargó
+    window.turnstileAPIReady = false;
+    
+    // Función global que Turnstile busca apenas se descarga
+    window.onTurnstileLoad = function() {
+        window.turnstileAPIReady = true;
+        // Si el AuthController ya definió su función, la llamamos
+        if (typeof window.initAppTurnstile === 'function') {
+            window.initAppTurnstile();
+        }
+    };
+</script>
+
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad" async defer></script>
     
     <title>Project Aurora</title>
 </head>
