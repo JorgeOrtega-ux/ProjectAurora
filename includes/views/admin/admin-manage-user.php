@@ -85,14 +85,9 @@ if (!empty($targetUuid)) {
         ?>
             <input type="hidden" id="admin-target-uuid" value="<?= htmlspecialchars($targetUser['uuid']) ?>">
 
-            <div class="component-header-card" style="display: flex; align-items: center; justify-content: space-between; text-align: left;">
-                <div>
-                    <h1 class="component-page-title">Editando: <?= htmlspecialchars($targetUser['username']) ?></h1>
-                    <p class="component-page-description">Administración directa de cuenta. Los cambios se aplican de inmediato.</p>
-                </div>
-                <button type="button" class="component-button component-button--square-40" data-tooltip="Volver a usuarios" data-nav="/ProjectAurora/admin/users">
-                    <span class="material-symbols-rounded">arrow_back</span>
-                </button>
+            <div class="component-header-card">
+                <h1 class="component-page-title">Editando: <?= htmlspecialchars($targetUser['username']) ?></h1>
+                <p class="component-page-description">Administración directa de cuenta. Los cambios se aplican de inmediato.</p>
             </div>
 
             <div class="component-card--grouped">

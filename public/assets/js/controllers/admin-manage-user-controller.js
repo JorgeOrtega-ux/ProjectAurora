@@ -61,6 +61,8 @@ export class AdminManageUserController {
             const adminDropdownTrigger = e.target.closest('[data-action="admin-toggle-dropdown"]');
             if (adminDropdownTrigger) {
                 e.preventDefault();
+                e.stopPropagation(); // SOLUCIÓN: Evita que el MainController intercepte el clic y lo cierre inmediatamente
+                
                 const wrapper = adminDropdownTrigger.closest('.component-dropdown');
                 const module = wrapper.querySelector('.component-module');
                 
