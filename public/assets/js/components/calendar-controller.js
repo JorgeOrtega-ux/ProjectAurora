@@ -1,4 +1,5 @@
 // public/assets/js/components/calendar-controller.js
+import { Toast } from './toast-controller.js';
 
 export class CalendarController {
     constructor() {
@@ -12,22 +13,23 @@ export class CalendarController {
     }
 
     init() {
-        // --- EVENTO CAPTURADO (Crucial para esquivar la detención de propagación de MainController al abrir) ---
+        // --- EVENTO CAPTURADO ---
         document.body.addEventListener('click', (e) => {
             const trigger = e.target.closest('[data-calendar-trigger="true"]');
             if (trigger) {
-                // Al detectar el trigger, abrimos internamente el calendario y sus datos.
                 this.openCalendar(trigger);
             }
-        }, true); // <-- El true significa fase de captura, se ejecuta primero.
+        }, true); 
 
-        // --- EVENTOS NORMALES (Navegación y botones internos del calendario) ---
+        // --- EVENTOS NORMALES ---
         document.body.addEventListener('click', (e) => {
             // 1. Navegación de meses
             const prevBtn = e.target.closest('[data-cal-action="prev-month"]');
             if (prevBtn) {
                 e.preventDefault();
-                e.stopPropagation(); // FIX: Prevenir que MainController detecte un clic fuera al repintar el DOM
+                e.stopPropagation(); 
+                if (prevBtn.disabled) return; // Bloqueo de seguridad si está deshabilitado
+                
                 this.currentDate.setMonth(this.currentDate.getMonth() - 1);
                 this.renderCalendar();
                 return;
@@ -36,7 +38,7 @@ export class CalendarController {
             const nextBtn = e.target.closest('[data-cal-action="next-month"]');
             if (nextBtn) {
                 e.preventDefault();
-                e.stopPropagation(); // FIX: Prevenir que MainController cierre el módulo
+                e.stopPropagation(); 
                 this.currentDate.setMonth(this.currentDate.getMonth() + 1);
                 this.renderCalendar();
                 return;
@@ -46,9 +48,7 @@ export class CalendarController {
             const dayBtn = e.target.closest('.calendar-day:not(.disabled)');
             if (dayBtn) {
                 e.preventDefault();
-                e.stopPropagation(); // FIX CRÍTICO: Detener la propagación. Al hacer renderCalendar, 
-                                     // este botón se destruye. Si el evento llega a document, MainController 
-                                     // creerá que el clic fue fuera del panel y cerrará el calendario prematuramente.
+                e.stopPropagation(); 
                                      
                 const day = parseInt(dayBtn.dataset.day);
                 const month = parseInt(dayBtn.dataset.month);
@@ -66,7 +66,6 @@ export class CalendarController {
             const applyBtn = e.target.closest('[data-action="apply-calendar"]');
             if (applyBtn) {
                 e.preventDefault();
-                // Aquí no detenemos propagación porque queremos que cierre normalmente
                 this.applySelection();
                 return;
             }
@@ -80,7 +79,7 @@ export class CalendarController {
             }
         });
 
-        // 5. Validar inputs de tiempo (No permitir valores imposibles)
+        // 5. Validar inputs de tiempo
         document.body.addEventListener('change', (e) => {
             if (e.target.id === 'cal-hour') {
                 let v = parseInt(e.target.value);
@@ -126,7 +125,6 @@ export class CalendarController {
         if (minInput) minInput.value = String(this.selectedDate.getMinutes()).padStart(2, '0');
         if (secInput) secInput.value = String(this.selectedDate.getSeconds()).padStart(2, '0');
 
-        // Generamos la cuadricula de días para el instante que se abre
         this.renderCalendar();
     }
 
@@ -143,40 +141,74 @@ export class CalendarController {
 
         grid.innerHTML = '';
 
-        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Domingo
+        const firstDayOfMonth = new Date(year, month, 1).getDay(); 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const daysInPrevMonth = new Date(year, month, 0).getDate();
 
         const today = new Date();
+        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        // LÓGICA: Deshabilitar el botón de "Mes Anterior" si estamos en el mes/año actual
+        if (this.activeModuleId) {
+            const module = document.getElementById(this.activeModuleId);
+            if (module) {
+                const prevBtn = module.querySelector('[data-cal-action="prev-month"]');
+                if (prevBtn) {
+                    if (year < today.getFullYear() || (year === today.getFullYear() && month <= today.getMonth())) {
+                        prevBtn.disabled = true;
+                        prevBtn.style.opacity = '0.3';
+                        prevBtn.style.cursor = 'not-allowed';
+                    } else {
+                        prevBtn.disabled = false;
+                        prevBtn.style.opacity = '1';
+                        prevBtn.style.cursor = 'pointer';
+                    }
+                }
+            }
+        }
         
         // Rellenar días del mes anterior
         for (let i = firstDayOfMonth - 1; i >= 0; i--) {
             const dayNum = daysInPrevMonth - i;
-            grid.appendChild(this.createDayElement(dayNum, month - 1, year, ['other-month']));
+            const classes = ['other-month'];
+            
+            // Evaluar si es un día pasado
+            const cellDate = new Date(year, month - 1, dayNum);
+            if (cellDate < todayDateOnly) classes.push('disabled');
+
+            grid.appendChild(this.createDayElement(dayNum, month - 1, year, classes));
         }
 
         // Rellenar días del mes actual
         for (let i = 1; i <= daysInMonth; i++) {
             const classes = [];
+            const cellDate = new Date(year, month, i);
             
-            // Marca el día actual en la vida real
             if (year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) {
                 classes.push('today');
             }
             
-            // Marca el día que el usuario tiene seleccionado
             if (year === this.selectedDate.getFullYear() && month === this.selectedDate.getMonth() && i === this.selectedDate.getDate()) {
                 classes.push('selected');
             }
 
+            // Evaluar si es un día pasado
+            if (cellDate < todayDateOnly) classes.push('disabled');
+
             grid.appendChild(this.createDayElement(i, month, year, classes));
         }
 
-        // Rellenar días del mes siguiente para completar la cuadrícula (42 celdas = 6 filas)
+        // Rellenar días del mes siguiente
         const totalCellsRendered = firstDayOfMonth + daysInMonth;
         const remainingCells = 42 - totalCellsRendered;
         for (let i = 1; i <= remainingCells; i++) {
-            grid.appendChild(this.createDayElement(i, month + 1, year, ['other-month']));
+            const classes = ['other-month'];
+            
+            // Evaluar si es un día pasado (raro para el mes siguiente, pero protege contra cambios de año)
+            const cellDate = new Date(year, month + 1, i);
+            if (cellDate < todayDateOnly) classes.push('disabled');
+
+            grid.appendChild(this.createDayElement(i, month + 1, year, classes));
         }
     }
 
@@ -204,12 +236,18 @@ export class CalendarController {
         if (minInput) this.selectedDate.setMinutes(parseInt(minInput.value) || 0);
         if (secInput) this.selectedDate.setSeconds(parseInt(secInput.value) || 0);
 
+        // VALIDACIÓN FRONTEND: Bloquear si la hora seleccionada está en el pasado
+        const now = new Date();
+        if (this.selectedDate <= now) {
+            Toast.show('La fecha y hora de suspensión deben ser en el futuro.', 'error');
+            return; // Abortar cierre, obligar al admin a corregir
+        }
+
         const input = document.getElementById(this.activeInputTarget);
         const display = document.getElementById(this.activeDisplayTarget);
 
         if (input) {
             input.value = this.formatValueDate(this.selectedDate);
-            // Disparar evento change por si otro script lo escucha
             const event = new Event('change', { bubbles: true });
             input.dispatchEvent(event);
         }
@@ -234,7 +272,6 @@ export class CalendarController {
 
     formatValueDate(d) {
         const pad = (n) => String(n).padStart(2, '0');
-        // Formato exacto requerido por MySQL y el backend actual
         return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 

@@ -240,10 +240,16 @@ class AdminService {
                 if (!$d) {
                     return ['success' => false, 'message' => 'El formato de la fecha de expiración no es válido.'];
                 }
+
+                // VALIDACIÓN BACKEND DE SEGURIDAD: NO PERMITIR FECHAS EN EL PASADO
+                $now = new \DateTime();
+                if ($d <= $now) {
+                    return ['success' => false, 'message' => 'La fecha de expiración no puede estar en el pasado. Verifica el calendario.'];
+                }
+
                 $suspension_expires_at = $d->format('Y-m-d H:i:s');
             }
 
-            // Integración del Formateo de Razón predefinida + Nota Adicional
             $cat = isset($data->suspension_category) ? trim($data->suspension_category) : 'other';
             $catLabel = isset($data->suspension_category_label) ? trim($data->suspension_category_label) : '';
             $note = isset($data->suspension_note) ? trim($data->suspension_note) : '';
