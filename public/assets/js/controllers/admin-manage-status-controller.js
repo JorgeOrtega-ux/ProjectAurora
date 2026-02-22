@@ -5,6 +5,15 @@ import { Toast } from '../components/toast-controller.js';
 
 export class AdminManageStatusController {
     constructor() {
+        // Reglas de tiempo para sanciones automáticas (en días)
+        this.SUSPENSION_RULES = {
+            'cat_1': 1,  // Spam
+            'cat_2': 3,  // Lenguaje inapropiado
+            'cat_3': 7,  // Comportamiento tóxico
+            'cat_4': 14, // Evasión
+            'cat_5': 30  // Fraude
+        };
+
         this.init();
     }
 
@@ -14,7 +23,7 @@ export class AdminManageStatusController {
             const view = document.getElementById('admin-manage-status-view');
             if (!view) return;
 
-            // --- SOLUCIÓN: MANEJO DE DROPDOWNS (TOGGLE) ---
+            // --- MANEJO DE DROPDOWNS (TOGGLE) ---
             const adminDropdownTrigger = e.target.closest('[data-action="admin-toggle-dropdown"]');
             if (adminDropdownTrigger) {
                 e.preventDefault();
@@ -96,6 +105,8 @@ export class AdminManageStatusController {
             this.handleLifecycleChange(value);
         } else if (target === 'suspension-type') {
             this.handleSuspensionTypeChange(value);
+        } else if (target === 'suspension-category') {
+            this.handleSuspensionCategoryChange(value, option.dataset.label);
         }
     }
 
@@ -123,12 +134,67 @@ export class AdminManageStatusController {
 
     handleSuspensionTypeChange(type) {
         const dateSection = document.getElementById('cascade-suspension-date');
-        if (!dateSection) return;
-
+        const durationSection = document.getElementById('cascade-suspension-duration');
+        
         if (type === 'temporal') {
-            dateSection.classList.replace('disabled', 'active');
+            const currentCat = document.getElementById('dropdown-suspension-category')?.dataset.value;
+            // Evaluamos qué mostrar basándonos en la categoría actual
+            if (currentCat === 'other') {
+                if (dateSection) dateSection.classList.replace('disabled', 'active');
+                if (durationSection) durationSection.classList.replace('active', 'disabled');
+            } else {
+                if (dateSection) dateSection.classList.replace('active', 'disabled');
+                if (durationSection) durationSection.classList.replace('disabled', 'active');
+            }
         } else {
-            dateSection.classList.replace('active', 'disabled');
+            // Si es Permanente, escondemos tanto el picker manual como la duración automática
+            if (dateSection) dateSection.classList.replace('active', 'disabled');
+            if (durationSection) durationSection.classList.replace('active', 'disabled');
+        }
+    }
+
+    handleSuspensionCategoryChange(value, label) {
+        const dateSection = document.getElementById('cascade-suspension-date');
+        const durationSection = document.getElementById('cascade-suspension-duration');
+        const displayDays = document.getElementById('display-suspension-days');
+        
+        const inputDate = document.getElementById('input-suspension-date');
+        const displayDate = document.getElementById('display-suspension-date');
+        const suspensionType = document.getElementById('dropdown-suspension-type')?.dataset.value;
+        
+        if (value === 'other') {
+            // Ocultar duración automática
+            if (durationSection) durationSection.classList.replace('active', 'disabled');
+            
+            // Si elige "Otro" y estamos en modo Temporal, mostramos el picker
+            if (suspensionType === 'temporal' && dateSection) {
+                dateSection.classList.replace('disabled', 'active');
+            }
+            
+            // Forzamos limpiar la fecha para que el admin la asigne manualmente
+            if (inputDate) inputDate.value = '';
+            if (displayDate) displayDate.textContent = 'Seleccionar fecha y hora';
+            
+        } else if (this.SUSPENSION_RULES[value]) {
+            // Ocultar calendario manual
+            if (dateSection) dateSection.classList.replace('active', 'disabled');
+            
+            // Mostrar y actualizar la duración en el componente visual
+            const days = this.SUSPENSION_RULES[value];
+            if (suspensionType === 'temporal') {
+                if (durationSection) durationSection.classList.replace('disabled', 'active');
+                if (displayDays) displayDays.textContent = days;
+            }
+            
+            // Calculamos la fecha objetivo
+            const date = new Date();
+            date.setDate(date.getDate() + days);
+            
+            const pad = (n) => String(n).padStart(2, '0');
+            const formattedValue = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            
+            // Inyectamos silenciosamente la fecha para que se envíe al backend
+            if (inputDate) inputDate.value = formattedValue;
         }
     }
 
@@ -142,21 +208,22 @@ export class AdminManageStatusController {
 
         if (!targetUuid) return;
 
-        // Leer valores directamente desde la estructura de los nuevos Dropdowns
         const status = document.getElementById('dropdown-lifecycle-status')?.dataset.value || 'active';
         const isSuspended = document.getElementById('toggle-is-suspended')?.checked ? 1 : 0;
         
         const suspensionType = document.getElementById('dropdown-suspension-type')?.dataset.value;
+        const suspensionCategory = document.getElementById('dropdown-suspension-category')?.dataset.value;
+        const suspensionCategoryLabel = document.getElementById('dropdown-suspension-category')?.querySelector('.component-dropdown-text')?.textContent;
         const suspensionDate = document.getElementById('input-suspension-date')?.value;
-        const suspensionReason = document.getElementById('input-suspension-reason')?.value;
+        const suspensionNote = document.getElementById('input-suspension-reason')?.value;
         
         const deletionType = document.getElementById('dropdown-deletion-type')?.dataset.value;
         const deletionReason = document.getElementById('input-deletion-reason')?.value;
 
-        // Validación Frontend Simple
+        // Validación Frontend: Si es temporal Y manual ("Otro"), debe llevar fecha
         if (status === 'active' && isSuspended === 1 && suspensionType === 'temporal') {
-            if (!suspensionDate) {
-                Toast.show('Debes especificar la fecha y hora de expiración para la suspensión temporal.', 'error');
+            if (suspensionCategory === 'other' && !suspensionDate) {
+                Toast.show('Debes especificar la fecha y hora de expiración para la suspensión temporal manual.', 'error');
                 return;
             }
         }
@@ -168,8 +235,10 @@ export class AdminManageStatusController {
             status: status,
             is_suspended: isSuspended,
             suspension_type: suspensionType,
+            suspension_category: suspensionCategory,
+            suspension_category_label: suspensionCategoryLabel,
             suspension_expires_at: suspensionDate,
-            suspension_reason: suspensionReason,
+            suspension_note: suspensionNote,
             deletion_type: deletionType,
             deletion_reason: deletionReason
         };

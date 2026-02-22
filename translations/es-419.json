@@ -182,5 +182,15 @@
   "admin.filter.role.founder": "Fundador",
   "admin.filter.status.active": "Activo",
   "admin.filter.status.suspended": "Suspendido",
-  "admin.filter.status.deleted": "Eliminado"
+  "admin.filter.status.deleted": "Eliminado",
+  "admin.suspension.cat_1": "Spam o Publicidad no deseada",
+  "admin.suspension.cat_2": "Lenguaje inapropiado o Insultos",
+  "admin.suspension.cat_3": "Comportamiento Tóxico o Acoso",
+  "admin.suspension.cat_4": "Evasión de Ban / Multicuentas",
+  "admin.suspension.cat_5": "Fraude o Actividad Ilegal",
+  "admin.suspension.cat_other": "Otro (Especificar fecha manual)",
+  "admin.suspension.category_title": "Motivo de la Infracción",
+  "admin.suspension.category_desc": "Selecciona la falta cometida para aplicar una sanción automática.",
+  "admin.suspension.note_title": "Nota adicional del administrador (Opcional)",
+  "admin.suspension.note_desc": "Proporciona contexto adicional sobre la sanción."
 }

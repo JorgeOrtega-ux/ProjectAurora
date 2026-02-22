@@ -211,6 +211,78 @@ if (!empty($targetUuid)) {
                         </div>
                     </div>
 
+                    <hr class="component-divider">
+                    <div class="component-group-item component-group-item--stacked">
+                        <div class="component-card__content">
+                            <div class="component-card__text">
+                                <h2 class="component-card__title"><?= t('admin.suspension.category_title') ?? 'Motivo de la Infracción' ?></h2>
+                                <p class="component-card__description"><?= t('admin.suspension.category_desc') ?? 'Selecciona la falta cometida para aplicar una sanción automática.' ?></p>
+                            </div>
+                        </div>
+                        <div class="component-card__actions">
+                            <div class="component-dropdown" id="dropdown-suspension-category" data-value="other">
+                                <div class="component-dropdown-trigger" data-action="admin-toggle-dropdown">
+                                    <span class="material-symbols-rounded trigger-select-icon">edit_calendar</span>
+                                    <span class="component-dropdown-text"><?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?></span>
+                                    <span class="material-symbols-rounded">expand_more</span>
+                                </div>
+                                <div class="component-module component-module--display-overlay component-module--size-l component-module--dropdown-selector disabled">
+                                    <div class="component-module-panel">
+                                        <div class="pill-container"><div class="drag-handle"></div></div>
+                                        <div class="component-module-panel-body component-module-panel-body--padded">
+                                            <div class="component-menu-list overflow-y component-menu-list--dropdown">
+                                                <div class="component-menu-link" data-action="status-select-option" data-target="suspension-category" data-value="cat_1" data-label="<?= t('admin.suspension.cat_1') ?? 'Spam o Publicidad no deseada' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">campaign</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_1') ?? 'Spam o Publicidad no deseada' ?></span></div>
+                                                </div>
+                                                <div class="component-menu-link" data-action="status-select-option" data-target="suspension-category" data-value="cat_2" data-label="<?= t('admin.suspension.cat_2') ?? 'Lenguaje inapropiado o Insultos' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">gavel</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_2') ?? 'Lenguaje inapropiado o Insultos' ?></span></div>
+                                                </div>
+                                                <div class="component-menu-link" data-action="status-select-option" data-target="suspension-category" data-value="cat_3" data-label="<?= t('admin.suspension.cat_3') ?? 'Comportamiento Tóxico o Acoso' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">block</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_3') ?? 'Comportamiento Tóxico o Acoso' ?></span></div>
+                                                </div>
+                                                <div class="component-menu-link" data-action="status-select-option" data-target="suspension-category" data-value="cat_4" data-label="<?= t('admin.suspension.cat_4') ?? 'Evasión de Ban / Multicuentas' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">group_remove</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_4') ?? 'Evasión de Ban / Multicuentas' ?></span></div>
+                                                </div>
+                                                <div class="component-menu-link" data-action="status-select-option" data-target="suspension-category" data-value="cat_5" data-label="<?= t('admin.suspension.cat_5') ?? 'Fraude o Actividad Ilegal' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">policy</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_5') ?? 'Fraude o Actividad Ilegal' ?></span></div>
+                                                </div>
+                                                <div class="component-menu-link active" data-action="status-select-option" data-target="suspension-category" data-value="other" data-label="<?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">edit_calendar</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?></span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="cascade-suspension-duration" class="component-stage-form disabled" data-state="suspension-duration">
+                        <hr class="component-divider">
+                        <div class="component-group-item component-group-item--wrap">
+                            <div class="component-card__content">
+                                <div class="component-card__icon-container component-card__icon-container--bordered">
+                                    <span class="material-symbols-rounded">timer</span>
+                                </div>
+                                <div class="component-card__text">
+                                    <h2 class="component-card__title">Duración de la Sanción</h2>
+                                    <p class="component-card__description">Tiempo asignado automáticamente por el sistema.</p>
+                                </div>
+                            </div>
+                            <div class="component-card__actions actions-right">
+                                <span class="component-badge" style="font-size: 15px; font-weight: 600; color: var(--color-error); border-color: var(--color-error); padding: 8px 16px;">
+                                    <span id="display-suspension-days" style="margin-right: 4px;">0</span> Días
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="cascade-suspension-date" class="component-stage-form <?= ($suspensionType === 'permanent') ? 'disabled' : 'active' ?>" data-state="suspension-date">
                         <hr class="component-divider">
                         <div class="component-group-item component-group-item--stacked">
@@ -221,7 +293,7 @@ if (!empty($targetUuid)) {
                                 </div>
                             </div>
                             <div class="component-card__actions">
-                                <div class="component-dropdown">
+                                <div class="component-dropdown" id="date-picker-trigger-wrapper">
                                     <div class="component-input-wrapper--trigger" data-action="toggleModule" data-target="moduleCalendarSuspension" data-calendar-trigger="true" data-input-target="input-suspension-date" data-display-target="display-suspension-date">
                                         <span class="material-symbols-rounded trigger-select-icon">calendar_month</span>
                                         <span class="component-dropdown-text" id="display-suspension-date" style="flex: 1; text-align: left; padding-left: 8px;"><?= htmlspecialchars($displaySuspensionDate) ?></span>
@@ -244,8 +316,8 @@ if (!empty($targetUuid)) {
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
-                                <h2 class="component-card__title">Motivo de la suspensión</h2>
-                                <p class="component-card__description">Razón que será visible para el usuario al intentar iniciar sesión.</p>
+                                <h2 class="component-card__title"><?= t('admin.suspension.note_title') ?? 'Nota adicional del administrador (Opcional)' ?></h2>
+                                <p class="component-card__description"><?= t('admin.suspension.note_desc') ?? 'Proporciona contexto adicional sobre la sanción.' ?></p>
                             </div>
                         </div>
                         <div class="component-card__actions u-w-100">

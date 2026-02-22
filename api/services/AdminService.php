@@ -244,7 +244,7 @@ class AdminService {
                     return ['success' => false, 'message' => 'Debes especificar la fecha y hora de expiración para la suspensión temporal.'];
                 }
                 
-                // Validar formato de fecha (soporte para el input type="datetime-local" del frontend)
+                // Validar formato de fecha
                 $d = \DateTime::createFromFormat('Y-m-d\TH:i', $data->suspension_expires_at); 
                 if (!$d) {
                     $d = \DateTime::createFromFormat('Y-m-d H:i:s', $data->suspension_expires_at);
@@ -255,11 +255,22 @@ class AdminService {
                 $suspension_expires_at = $d->format('Y-m-d H:i:s');
             }
 
-            $suspension_reason = !empty($data->suspension_reason) ? trim($data->suspension_reason) : null;
+            // Integración del Formateo de Razón predefinida + Nota Adicional
+            $cat = isset($data->suspension_category) ? trim($data->suspension_category) : 'other';
+            $catLabel = isset($data->suspension_category_label) ? trim($data->suspension_category_label) : '';
+            $note = isset($data->suspension_note) ? trim($data->suspension_note) : '';
+
+            if ($cat !== 'other' && !empty($catLabel)) {
+                $suspension_reason = "[Infracción: " . $catLabel . "]";
+                if ($note !== '') {
+                    $suspension_reason .= " - Nota del admin: " . $note;
+                }
+            } else {
+                $suspension_reason = $note !== '' ? $note : null;
+            }
         }
 
         if ($status === 'deleted') {
-            // Si el administrador lo marca como deleted, le asignamos la etiqueta correspondiente
             $deletion_type = !empty($data->deletion_type) ? trim($data->deletion_type) : 'admin_banned';
             $deletion_reason = !empty($data->deletion_reason) ? trim($data->deletion_reason) : null;
         }
