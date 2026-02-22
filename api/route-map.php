@@ -44,6 +44,11 @@ return [
     'admin.update_field'          => ['file' => 'handler/admin-handler.php', 'action' => 'update_field'],
     'admin.update_preference'     => ['file' => 'handler/admin-handler.php', 'action' => 'update_preference'],
     'admin.update_status'         => ['file' => 'handler/admin-handler.php', 'action' => 'update_status'],
-    'admin.update_server_config'  => ['file' => 'handler/admin-handler.php', 'action' => 'update_server_config']
+    'admin.update_server_config'  => ['file' => 'handler/admin-handler.php', 'action' => 'update_server_config'],
+    
+    // --- RUTAS DE COPIAS DE SEGURIDAD ---
+    'admin.create_backup'         => ['file' => 'handler/admin-handler.php', 'action' => 'create_backup'],
+    'admin.delete_backup'         => ['file' => 'handler/admin-handler.php', 'action' => 'delete_backup'],
+    'admin.restore_backup'        => ['file' => 'handler/admin-handler.php', 'action' => 'restore_backup']
 ];
 ?>

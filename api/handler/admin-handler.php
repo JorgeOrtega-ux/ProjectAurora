@@ -75,6 +75,21 @@ return function($dbConnection, $action) {
             Utils::sendResponse($adminService->updateServerConfig($data, $adminId));
             break;
 
+        // --- MANEJADORES DE BACKUPS ---
+        case 'create_backup':
+            Utils::sendResponse($adminService->createBackup($adminId));
+            break;
+
+        case 'delete_backup':
+            if (empty($data->filename)) Utils::sendResponse(['success' => false, 'message' => 'Nombre de archivo requerido.']);
+            Utils::sendResponse($adminService->deleteBackup($data->filename, $adminId));
+            break;
+
+        case 'restore_backup':
+            if (empty($data->filename)) Utils::sendResponse(['success' => false, 'message' => 'Nombre de archivo requerido.']);
+            Utils::sendResponse($adminService->restoreBackup($data->filename, $adminId));
+            break;
+
         default:
             Utils::sendResponse(['success' => false, 'message' => 'Acción administrativa no válida.']);
             break;

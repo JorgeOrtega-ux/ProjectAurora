@@ -215,5 +215,14 @@
   "admin.server.cat_email": "Validación de Correo Electrónico",
   "admin.server.cat_email_desc": "Restricciones de longitud y lista blanca de dominios para el registro.",
   "admin.server.btn_save": "Guardar Configuración",
-  "admin.server.success": "Configuración actualizada. Los cambios aplicarán para las nuevas solicitudes."
+  "admin.server.success": "Configuración actualizada. Los cambios aplicarán para las nuevas solicitudes.",
+  "admin.backups.title": "Copias de Seguridad",
+  "admin.backups.desc": "Genera, restaura y administra los respaldos de la base de datos.",
+  "admin.backups.btn_create": "Crear copia",
+  "admin.backups.search_placeholder": "Buscar por nombre de archivo...",
+  "admin.backups.empty": "No hay copias de seguridad generadas en el servidor.",
+  "admin.backups.tooltip_search": "Buscar copia",
+  "admin.backups.tooltip_restore": "Restaurar base de datos",
+  "admin.backups.tooltip_delete": "Eliminar archivo",
+  "admin.backups.selected": "{count} seleccionado"
 }

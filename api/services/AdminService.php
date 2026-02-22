@@ -307,7 +307,6 @@ class AdminService {
             return ['success' => false, 'message' => 'No hay datos para actualizar.'];
         }
 
-        // Definimos las llaves que se permite modificar
         $allowedKeys = [
             'min_password_length', 'max_password_length', 
             'min_username_length', 'max_username_length', 
@@ -333,6 +332,105 @@ class AdminService {
             $this->conn->rollBack();
             Logger::database("Error DB en AdminService::updateServerConfig", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error de base de datos al guardar la configuración.'];
+        }
+    }
+
+    // ==========================================
+    // MÉTODOS DE COPIAS DE SEGURIDAD
+    // ==========================================
+
+    private function getBackupPath() {
+        $path = __DIR__ . '/../../backups/';
+        if (!is_dir($path)) {
+            mkdir($path, 0755, true);
+            // Proteger el directorio si el servidor web llegara a apuntar mal
+            file_put_contents($path . '.htaccess', "Deny from all");
+        }
+        return $path;
+    }
+
+    public function createBackup($adminId) {
+        try {
+            $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+            $user = $_ENV['DB_USER'] ?? getenv('DB_USER');
+            $pass = $_ENV['DB_PASS'] ?? getenv('DB_PASS');
+            $name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+            
+            $path = $this->getBackupPath();
+            $filename = 'backup_' . date('Y_m_d_H_i_s') . '_' . substr(md5(uniqid()), 0, 8) . '.sql';
+            $filepath = $path . $filename;
+
+            // ========================================================
+            // CONFIGURA TU RUTA DE MYSQLDUMP AQUÍ
+            // Cambia esto a la ruta de tu entorno (XAMPP, Laragon, etc)
+            // Ejemplo Laragon: 'C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysqldump'
+            // Ejemplo Linux/Mac: 'mysqldump' o '/usr/bin/mysqldump'
+            // ========================================================
+            $mysqlDumpExec = $_ENV['MYSQLDUMP_PATH'] ?? 'C:\xampp\mysql\bin\mysqldump'; 
+
+            $passParam = empty($pass) ? "" : "-p" . escapeshellarg($pass);
+            $command = '"' . $mysqlDumpExec . '" -h ' . escapeshellarg($host) . ' -u ' . escapeshellarg($user) . ' ' . $passParam . ' ' . escapeshellarg($name) . ' > ' . escapeshellarg($filepath) . ' 2>&1';
+            
+            exec($command, $output, $resultCode);
+
+            if ($resultCode === 0 && file_exists($filepath)) {
+                Logger::system("Admin ID: $adminId generó una copia de seguridad: $filename", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Copia de seguridad creada correctamente.'];
+            } else {
+                Logger::system("Fallo al generar copia de seguridad. Salida: " . implode("\n", $output), Logger::LEVEL_ERROR);
+                return ['success' => false, 'message' => 'Error al generar la copia. Verifica que la ruta de mysqldump sea correcta en el servidor.'];
+            }
+        } catch (\Throwable $e) {
+            Logger::database("Error en AdminService::createBackup", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al crear el respaldo.'];
+        }
+    }
+
+    public function deleteBackup($filename, $adminId) {
+        $filepath = $this->getBackupPath() . basename($filename);
+        if (file_exists($filepath)) {
+            unlink($filepath);
+            Logger::system("Admin ID: $adminId eliminó la copia de seguridad: $filename", Logger::LEVEL_INFO);
+            return ['success' => true, 'message' => 'Copia de seguridad eliminada exitosamente.'];
+        }
+        return ['success' => false, 'message' => 'El archivo no existe en el servidor.'];
+    }
+
+    public function restoreBackup($filename, $adminId) {
+        try {
+            $filepath = $this->getBackupPath() . basename($filename);
+            if (!file_exists($filepath)) {
+                return ['success' => false, 'message' => 'El archivo no existe en el servidor.'];
+            }
+
+            $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+            $user = $_ENV['DB_USER'] ?? getenv('DB_USER');
+            $pass = $_ENV['DB_PASS'] ?? getenv('DB_PASS');
+            $name = $_ENV['DB_NAME'] ?? getenv('DB_NAME');
+
+            // ========================================================
+            // CONFIGURA TU RUTA DE MYSQL (CLIENTE) AQUÍ
+            // Cambia esto a la ruta de tu entorno (XAMPP, Laragon, etc)
+            // Ejemplo Laragon: 'C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql'
+            // Ejemplo Linux/Mac: 'mysql' o '/usr/bin/mysql'
+            // ========================================================
+            $mysqlExec = $_ENV['MYSQL_PATH'] ?? 'C:\xampp\mysql\bin\mysql';
+
+            $passParam = empty($pass) ? "" : "-p" . escapeshellarg($pass);
+            $command = '"' . $mysqlExec . '" -h ' . escapeshellarg($host) . ' -u ' . escapeshellarg($user) . ' ' . $passParam . ' ' . escapeshellarg($name) . ' < ' . escapeshellarg($filepath) . ' 2>&1';
+            
+            exec($command, $output, $resultCode);
+
+            if ($resultCode === 0) {
+                Logger::system("Admin ID: $adminId restauró la copia de seguridad: $filename", Logger::LEVEL_INFO);
+                return ['success' => true, 'message' => 'Base de datos restaurada correctamente.'];
+            } else {
+                Logger::system("Fallo al restaurar copia de seguridad. Salida: " . implode("\n", $output), Logger::LEVEL_ERROR);
+                return ['success' => false, 'message' => 'Error al ejecutar la restauración. Verifica la ruta de mysql en el servidor.'];
+            }
+        } catch (\Throwable $e) {
+            Logger::database("Error en AdminService::restoreBackup", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error interno al restaurar el respaldo.'];
         }
     }
 }

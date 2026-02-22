@@ -45,6 +45,9 @@ export const API_ROUTES = {
         UPDATE_FIELD: `${BASE_PATH}/api/admin.update_field`,
         UPDATE_PREFERENCE: `${BASE_PATH}/api/admin.update_preference`,
         UPDATE_STATUS: `${BASE_PATH}/api/admin.update_status`,
-        UPDATE_SERVER_CONFIG: `${BASE_PATH}/api/admin.update_server_config`
+        UPDATE_SERVER_CONFIG: `${BASE_PATH}/api/admin.update_server_config`,
+        CREATE_BACKUP: `${BASE_PATH}/api/admin.create_backup`,
+        DELETE_BACKUP: `${BASE_PATH}/api/admin.delete_backup`,
+        RESTORE_BACKUP: `${BASE_PATH}/api/admin.restore_backup`
     }
 };

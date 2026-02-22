@@ -1,0 +1,177 @@
+// public/assets/js/controllers/admin-backups-controller.js
+import { ApiService } from '../api/api-services.js';
+import { API_ROUTES } from '../api/api-routes.js';
+import { Toast } from '../components/toast-controller.js';
+
+export class AdminBackupsController {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        // Escucha global de eventos usando Event Delegation
+        document.body.addEventListener('click', (e) => {
+            const view = document.getElementById('admin-backups-view');
+            if (!view) return;
+
+            // Manejo de la tarjeta de backup
+            const card = e.target.closest('.js-admin-backup-card');
+            if (card) {
+                this.handleCardSelection(card);
+            }
+
+            // Manejo de los botones del Toolbar
+            if (e.target.closest('[data-action="admin-toggle-search-bkp"]')) {
+                this.toggleSearchToolbar();
+            }
+
+            if (e.target.closest('[data-action="admin-clear-selection-bkp"]')) {
+                this.clearSelection();
+            }
+
+            const btnCreate = e.target.closest('[data-action="admin-create-backup"]');
+            if (btnCreate) {
+                this.createBackup(btnCreate);
+            }
+
+            if (e.target.closest('[data-action="admin-delete-backup"]')) {
+                this.deleteBackup();
+            }
+
+            if (e.target.closest('[data-action="admin-restore-backup"]')) {
+                this.restoreBackup();
+            }
+        });
+
+        document.body.addEventListener('input', (e) => {
+            if (e.target.id === 'admin-bkp-search-input') {
+                this.filterBackups(e.target.value.toLowerCase().trim());
+            }
+        });
+    }
+
+    handleCardSelection(card) {
+        const isSelected = card.classList.contains('selected');
+        this.clearSelection(); 
+        
+        const selectionToolbar = document.getElementById('toolbar-selection-bkp');
+        const searchToolbar = document.getElementById('toolbar-search-bkp');
+        if (searchToolbar) searchToolbar.classList.remove('active');
+
+        if (!isSelected) {
+            card.classList.add('selected');
+            if (selectionToolbar) selectionToolbar.classList.add('active');
+        }
+    }
+
+    clearSelection() {
+        document.querySelectorAll('.js-admin-backup-card.selected').forEach(c => c.classList.remove('selected'));
+        const selectionToolbar = document.getElementById('toolbar-selection-bkp');
+        if (selectionToolbar) selectionToolbar.classList.remove('active');
+    }
+
+    toggleSearchToolbar() {
+        const searchToolbar = document.getElementById('toolbar-search-bkp');
+        this.clearSelection();
+
+        if (searchToolbar.classList.contains('active')) {
+            searchToolbar.classList.remove('active');
+            const input = document.getElementById('admin-bkp-search-input');
+            if(input) {
+                input.value = '';
+                this.filterBackups('');
+            }
+        } else {
+            searchToolbar.classList.add('active');
+            setTimeout(() => document.getElementById('admin-bkp-search-input').focus(), 100);
+        }
+    }
+
+    filterBackups(query) {
+        const cards = document.querySelectorAll('.js-admin-backup-card');
+        cards.forEach(card => {
+            const filename = card.dataset.filename.toLowerCase();
+            if (filename.includes(query)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    async createBackup(btn) {
+        const csrfToken = document.getElementById('csrf_token_admin') ? document.getElementById('csrf_token_admin').value : '';
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.ADMIN.CREATE_BACKUP, { csrf_token: csrfToken });
+            if (res.success) {
+                Toast.show(res.message, 'success');
+                // Refrescamos la vista para mostrar la carta recien generada (aprovechando el render de PHP)
+                setTimeout(() => window.location.reload(), 1500); 
+            } else {
+                Toast.show(res.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } catch (error) {
+            Toast.show('Error interno de red al crear copia de seguridad.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    async deleteBackup() {
+        const selectedCard = document.querySelector('.js-admin-backup-card.selected');
+        if (!selectedCard) return;
+        const filename = selectedCard.dataset.filename;
+
+        if (!confirm(`¿Estás seguro de eliminar permanentemente la copia: ${filename}? Esta acción no se puede deshacer.`)) return;
+
+        const csrfToken = document.getElementById('csrf_token_admin') ? document.getElementById('csrf_token_admin').value : '';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.ADMIN.DELETE_BACKUP, { filename, csrf_token: csrfToken });
+            if (res.success) {
+                Toast.show(res.message, 'success');
+                selectedCard.remove();
+                this.clearSelection();
+                
+                // Revisar si ya no hay más backups para mostrar el mensaje de vacío
+                if (document.querySelectorAll('.js-admin-backup-card').length === 0) {
+                    const emptyState = document.getElementById('admin-empty-state-bkp');
+                    if (emptyState) emptyState.style.display = 'block';
+                }
+            } else {
+                Toast.show(res.message, 'error');
+            }
+        } catch (error) {
+            Toast.show('Error de red al intentar eliminar la copia de seguridad.', 'error');
+        }
+    }
+
+    async restoreBackup() {
+        const selectedCard = document.querySelector('.js-admin-backup-card.selected');
+        if (!selectedCard) return;
+        const filename = selectedCard.dataset.filename;
+
+        if (!confirm(`ATENCIÓN: Esto sobrescribirá la base de datos actual con los datos del archivo "${filename}". Todos los cambios recientes se perderán. ¿Deseas continuar?`)) return;
+
+        const csrfToken = document.getElementById('csrf_token_admin') ? document.getElementById('csrf_token_admin').value : '';
+
+        try {
+            Toast.show('Iniciando restauración de base de datos, por favor no recargues la página...', 'success');
+            const res = await ApiService.post(API_ROUTES.ADMIN.RESTORE_BACKUP, { filename, csrf_token: csrfToken });
+            if (res.success) {
+                Toast.show(res.message, 'success');
+                this.clearSelection();
+            } else {
+                Toast.show(res.message, 'error');
+            }
+        } catch (error) {
+            Toast.show('Error crítico durante la restauración de la base de datos.', 'error');
+        }
+    }
+}

@@ -11,7 +11,8 @@ import { DevicesController } from '../controllers/devices-controller.js';
 import { AdminUsersController } from '../controllers/admin-users-controller.js';
 import { AdminManageUserController } from '../controllers/admin-manage-user-controller.js';
 import { AdminManageStatusController } from '../controllers/admin-manage-status-controller.js';
-import { AdminServerController } from '../controllers/admin-server-controller.js'; // <-- NUEVO
+import { AdminServerController } from '../controllers/admin-server-controller.js';
+import { AdminBackupsController } from '../controllers/admin-backups-controller.js'; // <-- IMPORTACIÓN
 import { CalendarController } from '../components/calendar-controller.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,5 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.adminUsersController = new AdminUsersController(); 
     window.adminManageUserController = new AdminManageUserController();
     window.adminManageStatusController = new AdminManageStatusController(); 
-    window.adminServerController = new AdminServerController(); // <-- NUEVO
+    window.adminServerController = new AdminServerController(); 
+    window.adminBackupsController = new AdminBackupsController(); // <-- INSTANCIACIÓN
 });
