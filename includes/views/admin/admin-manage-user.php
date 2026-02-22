@@ -93,9 +93,9 @@ if (!empty($targetUuid)) {
             <div class="component-card--grouped">
                 <div class="component-group-item" data-component="admin-profile-picture-section">
                      <div class="component-card__content">
-                        <div class="component-card__profile-picture" data-role="<?= htmlspecialchars($targetUser['role']); ?>">
-                            <img src="<?= htmlspecialchars($formattedAvatar); ?>" data-original-src="<?= htmlspecialchars($formattedAvatar); ?>" class="component-card__avatar-image" id="admin-preview-avatar">
-                            <div class="component-card__avatar-overlay" id="admin-btn-trigger-upload"><span class="material-symbols-rounded">photo_camera</span></div>
+                        <div class="component-avatar component-avatar--md" data-role="<?= htmlspecialchars($targetUser['role']); ?>">
+                            <img src="<?= htmlspecialchars($formattedAvatar); ?>" data-original-src="<?= htmlspecialchars($formattedAvatar); ?>" class="component-avatar__image" id="admin-preview-avatar">
+                            <div class="component-avatar__overlay" id="admin-btn-trigger-upload"><span class="material-symbols-rounded">photo_camera</span></div>
                         </div>
                         <div class="component-card__text">
                             <h2 class="component-card__title">Foto de perfil</h2>

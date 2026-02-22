@@ -53,9 +53,9 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
         <div class="component-card--grouped">
             <div class="component-group-item" data-component="profile-picture-section">
                  <div class="component-card__content">
-                    <div class="component-card__profile-picture" data-role="<?= htmlspecialchars($userRole); ?>">
-                        <img src="<?= htmlspecialchars($formattedAvatar); ?>" data-original-src="<?= htmlspecialchars($formattedAvatar); ?>" class="component-card__avatar-image" id="preview-avatar">
-                        <div class="component-card__avatar-overlay" id="btn-trigger-upload"><span class="material-symbols-rounded">photo_camera</span></div>
+                    <div class="component-avatar component-avatar--md" data-role="<?= htmlspecialchars($userRole); ?>">
+                        <img src="<?= htmlspecialchars($formattedAvatar); ?>" data-original-src="<?= htmlspecialchars($formattedAvatar); ?>" class="component-avatar__image" id="preview-avatar">
+                        <div class="component-avatar__overlay" id="btn-trigger-upload"><span class="material-symbols-rounded">photo_camera</span></div>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= t('settings.account.avatar') ?></h2>

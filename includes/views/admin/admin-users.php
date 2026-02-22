@@ -37,14 +37,6 @@ if (isset($dbConnection)) {
     .component-user-card:hover { border-color: var(--text-primary); }
     .component-user-card.selected { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); }
 
-    .admin-user-avatar-box { width: 40px; height: 40px; border-radius: 50%; background-color: var(--bg-surface-alt); position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 4px; }
-    .admin-user-avatar-box::before { content: ''; position: absolute; top: -3px; left: -3px; right: -3px; bottom: -3px; border-radius: 50%; border: 2px solid transparent; pointer-events: none; z-index: 2; }
-    .admin-user-avatar-box[data-role="user"]::before { border-color: var(--role-user-border); }
-    .admin-user-avatar-box[data-role="moderator"]::before { border-color: var(--role-moderator); }
-    .admin-user-avatar-box[data-role="administrator"]::before { border-color: var(--role-administrator); }
-    .admin-user-avatar-box[data-role="founder"]::before { border: none; background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); }
-    .admin-user-avatar-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 2px solid var(--bg-surface); }
-
     .component-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 30px; background-color: transparent; border: 1px solid var(--border-transparent-20); border-radius: 50px; font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
     .component-badge .material-symbols-rounded { font-size: 16px; }
 
@@ -209,8 +201,8 @@ if (isset($dbConnection)) {
                          data-role="<?= htmlspecialchars($user['role']) ?>"
                          data-status="<?= $filterStatusValue ?>">
                         
-                        <div class="admin-user-avatar-box" data-role="<?= htmlspecialchars($user['role']) ?>">
-                            <img src="<?= htmlspecialchars($avatarPath) ?>" alt="Avatar" loading="lazy">
+                        <div class="component-avatar component-avatar--sm" style="margin-right: 4px;" data-role="<?= htmlspecialchars($user['role']) ?>">
+                            <img src="<?= htmlspecialchars($avatarPath) ?>" class="component-avatar__image" alt="Avatar" loading="lazy">
                         </div>
                         
                         <span class="component-badge" title="Nombre de usuario">
