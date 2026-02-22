@@ -733,7 +733,7 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
    ACCORDION & 2FA STYLES
    ========================================= */
 .component-accordion-item { border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border-color); }
-.component-accordion-header { cursor: pointer; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+.component-accordion-header { cursor: pointer; padding: 16px; display: flex; align-items: center; justify-content: space-between; user-select: none; }
 .component-accordion-content { display: none; padding: 0 24px 24px 24px; }
 .component-accordion-content .component-divider { margin-left: -24px; margin-right: -24px; width: calc(100% + 48px); max-width: none; }
 .component-accordion-item.active .component-accordion-content { display: block; animation: fadeIn 0.3s ease; }
