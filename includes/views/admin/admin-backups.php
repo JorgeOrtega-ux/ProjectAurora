@@ -92,10 +92,10 @@ if (is_dir($backupDir)) {
 
         <div class="component-data-list" id="admin-data-list-backups">
             <div class="component-data-list-header">
-                <div style="flex: 0 0 40px;">Tipo</div>
-                <div style="flex: 2; min-width: 200px;">Archivo</div>
-                <div style="flex: 1; min-width: 120px;">Tamaño</div>
-                <div style="flex: 1.5; min-width: 200px;">Fecha de Creación</div>
+                <div>Tipo</div>
+                <div>Archivo</div>
+                <div>Tamaño</div>
+                <div>Fecha de Creación</div>
             </div>
 
             <?php if (empty($backups)): ?>
@@ -106,27 +106,27 @@ if (is_dir($backupDir)) {
                 <?php foreach ($backups as $bkp): ?>
                     <div class="component-data-card js-admin-backup-card" data-filename="<?= htmlspecialchars($bkp['filename']) ?>">
                         
-                        <div class="component-data-column" style="flex: 0 0 40px;">
+                        <div class="component-data-column">
                             <div class="component-avatar component-avatar--sm" style="background: transparent; border: 1px solid var(--border-color);" data-role="user">
                                 <span class="material-symbols-rounded" style="color: var(--text-secondary); font-size: 24px;">database</span>
                             </div>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 2; min-width: 200px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Nombre del archivo">
                                 <span class="material-symbols-rounded">description</span>
                                 <span><?= htmlspecialchars($bkp['filename']) ?></span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1; min-width: 120px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Tamaño en disco">
                                 <span class="material-symbols-rounded">hard_drive</span>
                                 <span><?= $bkp['size'] ?> MB</span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1.5; min-width: 200px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Fecha de creación">
                                 <span class="material-symbols-rounded">calendar_today</span>
                                 <span><?= $bkp['created_at'] ?></span>

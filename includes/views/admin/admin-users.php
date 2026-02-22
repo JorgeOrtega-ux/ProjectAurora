@@ -138,12 +138,12 @@ if (isset($dbConnection)) {
 
         <div class="component-data-list" id="admin-data-list">
             <div class="component-data-list-header">
-                <div style="flex: 0 0 40px;">Avatar</div>
-                <div style="flex: 1; min-width: 140px;">Usuario</div>
-                <div style="flex: 1.5; min-width: 200px;">Correo Electrónico</div>
-                <div style="flex: 1; min-width: 120px;">Rol</div>
-                <div style="flex: 1; min-width: 120px;">Estado</div>
-                <div style="flex: 1.5; min-width: 250px;">Identificador (UUID)</div>
+                <div>Avatar</div>
+                <div>Usuario</div>
+                <div>Correo Electrónico</div>
+                <div>Rol</div>
+                <div>Estado</div>
+                <div>Identificador (UUID)</div>
             </div>
 
             <?php if (empty($users)): ?>
@@ -175,41 +175,41 @@ if (isset($dbConnection)) {
                          data-role="<?= htmlspecialchars($user['role']) ?>"
                          data-status="<?= $filterStatusValue ?>">
                         
-                        <div class="component-data-column" style="flex: 0 0 40px;">
+                        <div class="component-data-column">
                             <div class="component-avatar component-avatar--sm" data-role="<?= htmlspecialchars($user['role']) ?>">
                                 <img src="<?= htmlspecialchars($avatarPath) ?>" class="component-avatar__image" alt="Avatar" loading="lazy">
                             </div>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1; min-width: 140px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Nombre de usuario">
                                 <span class="material-symbols-rounded">person</span>
                                 <span><?= htmlspecialchars($user['username']) ?></span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1.5; min-width: 200px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Correo electrónico">
                                 <span class="material-symbols-rounded">mail</span>
                                 <span><?= htmlspecialchars($user['email']) ?></span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1; min-width: 120px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Rol del usuario">
                                 <span class="material-symbols-rounded">shield_person</span>
                                 <span><?= t('admin.filter.role.' . $user['role']) ?? htmlspecialchars($user['role']) ?></span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1; min-width: 120px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Estado de la cuenta">
                                 <span class="material-symbols-rounded"><?= $statusIcon ?></span>
                                 <span><?= $statusLabel ?></span>
                             </span>
                         </div>
                         
-                        <div class="component-data-column" style="flex: 1.5; min-width: 250px;">
+                        <div class="component-data-column">
                             <span class="component-badge" title="Identificador único (UUID)">
                                 <span class="material-symbols-rounded">fingerprint</span>
                                 <span style="font-family: monospace;"><?= htmlspecialchars($user['uuid']) ?></span>

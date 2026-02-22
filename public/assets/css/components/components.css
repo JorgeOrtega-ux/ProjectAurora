@@ -537,9 +537,11 @@
 .component-fatal-error-title { font-size: 24px; font-weight: 500; margin-bottom: 20px; color: var(--text-primary); text-align: center; }
 
 /* ========================================================================
-   ESTILOS DEL PERFIL
+   ESTILOS DEL PERFIL Y WRAPPERS
    ======================================================================== */
-.component-wrapper { width: 100%; max-width: 700px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.component-wrapper { width: 100%; max-width: 700px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; transition: max-width 0.3s ease; }
+.component-wrapper--full { max-width: 100%; }
+
 .component-header-card { text-align: center; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; background-color: var(--bg-surface); }
 .component-page-title { font-size: 24px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-primary); }
 .component-page-description { font-size: 15px; color: var(--text-secondary); margin: 0; }
@@ -751,7 +753,6 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 .component-card__icon-container--bordered { border: 1px solid var(--border-color); background-color: transparent; }
 .component-card__icon-container span { color: var(--text-secondary); font-size: 22px; }
 
-
 .component-button--wide {
     min-width: 200px;
 }
@@ -821,7 +822,7 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
     justify-content: space-between; 
     align-items: center; 
     margin-bottom: 12px; 
-    width: 100%; /* Asegura que no rebase el contenedor */
+    width: 100%; 
 }
 
 .calendar-title { 
@@ -832,12 +833,12 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Si el mes es muy largo, no rompe el diseño */
+    text-overflow: ellipsis;
 }
 
 .calendar-weekdays { 
     display: grid; 
-    grid-template-columns: repeat(7, 1fr); /* 7 columnas exactas proporcionales */
+    grid-template-columns: repeat(7, 1fr); 
     text-align: center; 
     font-size: 12px; 
     font-weight: 600; 
@@ -849,7 +850,7 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 .calendar-grid { 
     display: grid; 
     grid-template-columns: repeat(7, 1fr); 
-    gap: 2px; /* Gap reducido para que quepa en pantallas pequeñas sin problemas */
+    gap: 2px; 
     width: 100%;
 }
 
@@ -857,15 +858,15 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    aspect-ratio: 1; /* Mantiene círculos perfectos sin importar el ancho */
+    aspect-ratio: 1; 
     border-radius: 50%; 
-    font-size: 13px; /* Tamaño optimizado */
+    font-size: 13px; 
     cursor: pointer; 
     color: var(--text-primary); 
     transition: background-color 0.2s, color 0.2s; 
     border: none; 
     background: transparent; 
-    width: 100%; /* Ocupa exactamente el espacio de la celda de grid */
+    width: 100%; 
     padding: 0;
 }
 
@@ -889,7 +890,7 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
     flex-direction: column; 
     align-items: center; 
     gap: 4px; 
-    flex: 1; /* Hace que las columnas se distribuyan uniformemente */
+    flex: 1; 
 }
 
 .calendar-time-picker label { 
@@ -913,8 +914,8 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: var(--bg-input);
-  width: 100%; /* Ocupa el 100% de la columna */
-  max-width: 50px; /* Límite máximo para que no se vea gigante */
+  width: 100%; 
+  max-width: 50px; 
   color: var(--text-primary);
   transition: border-color 0.2s ease;
 }
@@ -933,7 +934,7 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 /* =========================================
    SYSTEM: DATA LISTS & TOOLBARS (GENERIC)
    ========================================= */
-.component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 24px auto; z-index: 15; }
+.component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 0 auto; z-index: 15; }
 .component-toolbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); position: relative; }
 .toolbar-group { width: 100%; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .component-toolbar--primary { position: relative; z-index: 2; }
@@ -948,12 +949,16 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 .component-pagination-info { padding: 0 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; height: 100%; }
 
 .component-data-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-.component-data-card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; cursor: pointer; transition: none; }
+.component-data-card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; cursor: pointer; transition: none; }
+
+/* Acomodo tipo Grid fluido para modo Cards (anula flex inline del HTML) */
+.component-data-list:not(.component-data-list--table) .component-data-column { flex: 0 0 auto !important; min-width: 0 !important; width: auto !important; }
+
 .component-data-card:hover { border-color: var(--text-primary); }
 .component-data-card.selected { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); }
 .component-data-column { display: flex; align-items: center; font-size: 14px; color: var(--text-primary); }
 
-.component-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 30px; background-color: transparent; border: 1px solid var(--border-transparent-20); border-radius: 50px; font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+.component-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 30px; background-color: transparent; border: 1px solid var(--border-transparent-20); border-radius: 50px; font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; width: auto; }
 .component-badge .material-symbols-rounded { font-size: 16px; }
 
 /* Módulo de Filtros Dinámicos (Sin animación) */
@@ -968,10 +973,25 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
 
 /* --- TABLE VIEW MODIFIER --- */
 .component-data-list-header { display: none; }
-.component-data-list--table { border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-surface); gap: 0; overflow-x: auto; display: block; }
-.component-data-list--table .component-data-list-header { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(250px, 1fr); gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600; color: var(--text-secondary); background-color: var(--bg-surface-alt); border-radius: 12px 12px 0 0; min-width: 900px; }
-.component-data-list--table .component-data-card { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(250px, 1fr); padding: 12px 16px; gap: 16px; border: none; border-bottom: 1px solid var(--border-lighter); border-radius: 0; min-width: 900px; }
+.component-data-list--table { border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-surface); gap: 0; overflow-x: auto; display: block; animation: tableFadeIn 0.3s ease-out; }
+
+@keyframes tableFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.component-data-list--table .component-data-list-header { gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600; color: var(--text-secondary); background-color: transparent; border-radius: 12px 12px 0 0; min-width: 900px; }
+.component-data-list--table .component-data-card { padding: 12px 16px; gap: 16px; border: none; border-bottom: 1px solid var(--border-lighter); border-radius: 0; min-width: 900px; background-color: transparent; }
+
+/* Layout específico de columnas para Usuarios */
+#admin-data-list.component-data-list--table .component-data-list-header,
+#admin-data-list.component-data-list--table .component-data-card { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(250px, 1fr); }
+
+/* Layout específico de columnas para Backups */
+#admin-data-list-backups.component-data-list--table .component-data-list-header,
+#admin-data-list-backups.component-data-list--table .component-data-card { display: grid; grid-template-columns: 40px minmax(200px, 2fr) minmax(120px, 1fr) minmax(200px, 1.5fr); }
+
 .component-data-list--table .component-data-card:last-child { border-bottom: none; }
 .component-data-list--table .component-data-card:hover { background-color: var(--bg-hover-light); border-color: transparent; }
 .component-data-list--table .component-data-card.selected { background-color: var(--bg-hover-light); box-shadow: inset 4px 0 0 0 var(--action-primary); border-color: transparent; }
-.component-data-list--table .component-badge { border: none; padding: 0; min-height: auto; font-size: 14px; color: var(--text-primary); background: transparent; }
+.component-data-list--table .component-badge { border: none; padding: 0; min-height: auto; font-size: 14px; color: var(--text-primary); background: transparent; white-space: nowrap; }

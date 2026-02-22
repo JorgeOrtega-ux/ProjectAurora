@@ -56,12 +56,12 @@ export class AdminUsersController {
         if (mode === 'table') {
             list.classList.add('component-data-list--table');
             if (icon) icon.textContent = 'grid_view';
-            if (wrapper) wrapper.style.maxWidth = '100%';
+            if (wrapper) wrapper.classList.add('component-wrapper--full');
             if (header) header.style.display = 'none';
         } else {
             list.classList.remove('component-data-list--table');
             if (icon) icon.textContent = 'table_rows';
-            if (wrapper) wrapper.style.maxWidth = ''; // Limpia el estilo para usar el del CSS
+            if (wrapper) wrapper.classList.remove('component-wrapper--full');
             if (header) header.style.display = ''; // Limpia el estilo para mostrarlo
         }
     }
