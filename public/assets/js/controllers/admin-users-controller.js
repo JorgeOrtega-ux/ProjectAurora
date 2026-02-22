@@ -313,7 +313,7 @@ export class AdminUsersController {
 
             this.filteredCards.forEach((card, index) => {
                 if (index >= start && index < end) {
-                    card.style.display = 'flex'; 
+                    card.style.display = ''; // Dejar que CSS decida si es flex o table-row
                 } else {
                     card.style.display = 'none';
                 }
