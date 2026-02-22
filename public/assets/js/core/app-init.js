@@ -11,7 +11,8 @@ import { DevicesController } from '../controllers/devices-controller.js';
 import { AdminUsersController } from '../controllers/admin-users-controller.js';
 import { AdminManageUserController } from '../controllers/admin-manage-user-controller.js';
 import { AdminManageStatusController } from '../controllers/admin-manage-status-controller.js';
-import { CalendarController } from '../components/calendar-controller.js'; // <-- NUEVO
+import { AdminServerController } from '../controllers/admin-server-controller.js'; // <-- NUEVO
+import { CalendarController } from '../components/calendar-controller.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -29,10 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.tooltipController = new TooltipController(); 
     window.twoFactorController = new TwoFactorController(); 
     window.devicesController = new DevicesController();
-    window.calendarController = new CalendarController(); // <-- NUEVO
+    window.calendarController = new CalendarController();
     
     // Inicializar los controladores de Admin
     window.adminUsersController = new AdminUsersController(); 
     window.adminManageUserController = new AdminManageUserController();
     window.adminManageStatusController = new AdminManageStatusController(); 
+    window.adminServerController = new AdminServerController(); // <-- NUEVO
 });

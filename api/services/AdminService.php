@@ -227,7 +227,6 @@ class AdminService {
                     return ['success' => false, 'message' => 'El formato de la fecha de expiración no es válido.'];
                 }
 
-                // VALIDACIÓN BACKEND DE SEGURIDAD: NO PERMITIR FECHAS EN EL PASADO
                 $now = new \DateTime();
                 if ($d <= $now) {
                     return ['success' => false, 'message' => 'La fecha de expiración no puede estar en el pasado. Verifica el calendario.'];
@@ -299,6 +298,41 @@ class AdminService {
         } catch (\Throwable $e) {
             Logger::database("Error DB en AdminService::updateAccountStatus", Logger::LEVEL_ERROR, $e);
             return ['success' => false, 'message' => 'Error interno al actualizar el estado de la cuenta.'];
+        }
+    }
+
+    public function updateServerConfig($data, $adminId) {
+        $configs = (array)($data->configs ?? []);
+        if (empty($configs)) {
+            return ['success' => false, 'message' => 'No hay datos para actualizar.'];
+        }
+
+        // Definimos las llaves que se permite modificar
+        $allowedKeys = [
+            'min_password_length', 'max_password_length', 
+            'min_username_length', 'max_username_length', 
+            'min_email_local_length', 'max_email_local_length', 
+            'allowed_email_domains'
+        ];
+
+        try {
+            $this->conn->beginTransaction();
+            $stmt = $this->conn->prepare("UPDATE server_config SET setting_value = :val WHERE setting_key = :key");
+
+            foreach ($configs as $key => $val) {
+                if (in_array($key, $allowedKeys)) {
+                    $stmt->execute([':val' => (string)$val, ':key' => $key]);
+                }
+            }
+
+            $this->conn->commit();
+            Logger::system("Admin ID: $adminId actualizó la configuración global del servidor.", Logger::LEVEL_INFO);
+            return ['success' => true, 'message' => t('admin.server.success') ?? 'Configuración guardada correctamente.'];
+
+        } catch (\Throwable $e) {
+            $this->conn->rollBack();
+            Logger::database("Error DB en AdminService::updateServerConfig", Logger::LEVEL_ERROR, $e);
+            return ['success' => false, 'message' => 'Error de base de datos al guardar la configuración.'];
         }
     }
 }

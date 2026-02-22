@@ -71,6 +71,10 @@ return function($dbConnection, $action) {
             Utils::sendResponse($adminService->updateAccountStatus($data->target_uuid, $data, $adminId));
             break;
 
+        case 'update_server_config':
+            Utils::sendResponse($adminService->updateServerConfig($data, $adminId));
+            break;
+
         default:
             Utils::sendResponse(['success' => false, 'message' => 'Acción administrativa no válida.']);
             break;

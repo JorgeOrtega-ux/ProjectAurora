@@ -205,5 +205,15 @@
   "admin.suspension.dur_1y": "1 Año",
   "admin.suspension.dur_3y": "3 Años",
   "admin.suspension.dur_other": "Personalizado (Elegir fecha)",
-  "admin.suspension.recommended": "Recomendado"
+  "admin.suspension.recommended": "Recomendado",
+  "admin.server.title": "Configuración del Servidor",
+  "admin.server.desc": "Administra las reglas de seguridad, validación y parámetros globales del sistema.",
+  "admin.server.cat_security": "Seguridad y Contraseñas",
+  "admin.server.cat_security_desc": "Define los límites de longitud para las contraseñas de los usuarios.",
+  "admin.server.cat_users": "Cuentas de Usuario",
+  "admin.server.cat_users_desc": "Establece las reglas permitidas para los nombres de usuario.",
+  "admin.server.cat_email": "Validación de Correo Electrónico",
+  "admin.server.cat_email_desc": "Restricciones de longitud y lista blanca de dominios para el registro.",
+  "admin.server.btn_save": "Guardar Configuración",
+  "admin.server.success": "Configuración actualizada. Los cambios aplicarán para las nuevas solicitudes."
 }
