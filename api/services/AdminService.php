@@ -13,7 +13,6 @@ class AdminService {
         $this->conn = $db;
     }
 
-    // Helper interno para registrar cambios (Se registra en el log del usuario afectado)
     private function logChange($userId, $field, $oldValue, $newValue, $adminId) {
         try {
             $stmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, :field, :old_val, :new_val)");
@@ -28,7 +27,6 @@ class AdminService {
         }
     }
 
-    // Obtener los datos actuales del usuario objetivo por su UUID
     private function getTargetUser($targetUuid) {
         $stmt = $this->conn->prepare("SELECT id, uuid, username, email, avatar_path, role FROM users WHERE uuid = :uuid LIMIT 1");
         $stmt->execute([':uuid' => $targetUuid]);
@@ -51,7 +49,6 @@ class AdminService {
         $webPath = $processResult['webPath'];
 
         try {
-            // Eliminar imagen anterior si era subida
             if ($oldAvatar && strpos($oldAvatar, 'uploaded/') !== false) {
                 $oldFile = __DIR__ . '/../../public/' . $oldAvatar;
                 if (file_exists($oldFile)) { @unlink($oldFile); }
@@ -117,13 +114,10 @@ class AdminService {
         if ($oldValue === $newValue) return ['success' => true, 'message' => 'Sin cambios.', 'newValue' => $newValue];
 
         try {
-            // Validaciones puras (sin Rate Limit)
             if ($field === 'username') {
                 if (!Utils::validateUsername($newValue)) return ['success' => false, 'message' => 'Formato o longitud de usuario inválida.'];
             } else if ($field === 'email') {
                 if (!Utils::validateEmail($newValue)) return ['success' => false, 'message' => 'Correo inválido o dominio no permitido.'];
-                
-                // Comprobar colisión
                 $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
                 $checkStmt->execute([':email' => $newValue, ':id' => $userId]);
                 if ($checkStmt->rowCount() > 0) return ['success' => false, 'message' => 'El correo ya está en uso por otro usuario.'];
@@ -131,7 +125,6 @@ class AdminService {
                 $allowedRoles = ['user', 'moderator', 'administrator', 'founder'];
                 if (!in_array($newValue, $allowedRoles)) return ['success' => false, 'message' => 'Rol no válido.'];
 
-                // Verificación de seguridad de roles
                 $stmtAdmin = $this->conn->prepare("SELECT role FROM users WHERE id = :id");
                 $stmtAdmin->execute([':id' => $adminId]);
                 $adminRole = $stmtAdmin->fetchColumn();
@@ -145,7 +138,6 @@ class AdminService {
                 }
             }
 
-            // Actualización directa
             $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
                 $this->logChange($userId, $field, $oldValue, $newValue, $adminId);
@@ -206,12 +198,10 @@ class AdminService {
         
         $userId = $user['id'];
 
-        // Prevención de auto-modificación desde el panel
         if ($userId === $adminId) {
             return ['success' => false, 'message' => 'No puedes modificar tu propio estado desde este panel.'];
         }
 
-        // Prevención de afectar a Fundadores si no eres Fundador
         if ($user['role'] === 'founder') {
              $stmtAdmin = $this->conn->prepare("SELECT role FROM users WHERE id = :id");
              $stmtAdmin->execute([':id' => $adminId]);
@@ -221,7 +211,6 @@ class AdminService {
              }
         }
         
-        // Extracción y saneamiento de datos
         $status = (isset($data->status) && $data->status === 'deleted') ? 'deleted' : 'active';
         $is_suspended = (isset($data->is_suspended) && $data->is_suspended == 1) ? 1 : 0;
         
@@ -244,7 +233,6 @@ class AdminService {
                     return ['success' => false, 'message' => 'Debes especificar la fecha y hora de expiración para la suspensión temporal.'];
                 }
                 
-                // Validar formato de fecha
                 $d = \DateTime::createFromFormat('Y-m-d\TH:i', $data->suspension_expires_at); 
                 if (!$d) {
                     $d = \DateTime::createFromFormat('Y-m-d H:i:s', $data->suspension_expires_at);
@@ -276,7 +264,6 @@ class AdminService {
         }
 
         try {
-            // Leer datos anteriores para dejar registro claro en el log
             $stmtOld = $this->conn->prepare("SELECT status, is_suspended FROM users WHERE id = :id");
             $stmtOld->execute([':id' => $userId]);
             $oldData = $stmtOld->fetch(PDO::FETCH_ASSOC);
@@ -284,7 +271,6 @@ class AdminService {
             $oldSummary = "Status: {$oldData['status']}, Suspended: {$oldData['is_suspended']}";
             $newSummary = "Status: $status, Suspended: $is_suspended";
 
-            // Ejecutar la actualización en base de datos
             $query = "UPDATE users SET 
                         status = :status,
                         is_suspended = :is_suspended,
@@ -307,10 +293,8 @@ class AdminService {
                 ':id' => $userId
             ]);
 
-            // Registrar el cambio de ciclo de vida / acceso
             $this->logChange($userId, 'account_status_and_access', $oldSummary, $newSummary, $adminId);
 
-            // Medida de seguridad: Destruir/Revocar sesiones activas si la cuenta es suspendida o eliminada
             if ($status === 'deleted' || $is_suspended == 1) {
                 $delSessions = $this->conn->prepare("DELETE FROM user_sessions WHERE user_id = :id");
                 $delSessions->execute([':id' => $userId]);

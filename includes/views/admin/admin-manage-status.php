@@ -222,8 +222,8 @@ if (!empty($targetUuid)) {
                         <div class="component-card__actions">
                             <div class="component-dropdown" id="dropdown-suspension-category" data-value="other">
                                 <div class="component-dropdown-trigger" data-action="admin-toggle-dropdown">
-                                    <span class="material-symbols-rounded trigger-select-icon">edit_calendar</span>
-                                    <span class="component-dropdown-text"><?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?></span>
+                                    <span class="material-symbols-rounded trigger-select-icon">help_outline</span>
+                                    <span class="component-dropdown-text"><?= t('admin.suspension.cat_other') ?? 'Otro (Sin categoría predefinida)' ?></span>
                                     <span class="material-symbols-rounded">expand_more</span>
                                 </div>
                                 <div class="component-module component-module--display-overlay component-module--size-l component-module--dropdown-selector disabled">
@@ -251,9 +251,9 @@ if (!empty($targetUuid)) {
                                                     <div class="component-menu-link-icon"><span class="material-symbols-rounded">policy</span></div>
                                                     <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_5') ?? 'Fraude o Actividad Ilegal' ?></span></div>
                                                 </div>
-                                                <div class="component-menu-link active" data-action="status-select-option" data-target="suspension-category" data-value="other" data-label="<?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?>">
-                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">edit_calendar</span></div>
-                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_other') ?? 'Otro (Especificar fecha manual)' ?></span></div>
+                                                <div class="component-menu-link active" data-action="status-select-option" data-target="suspension-category" data-value="other" data-label="<?= t('admin.suspension.cat_other') ?? 'Otro (Sin categoría predefinida)' ?>">
+                                                    <div class="component-menu-link-icon"><span class="material-symbols-rounded">help_outline</span></div>
+                                                    <div class="component-menu-link-text"><span><?= t('admin.suspension.cat_other') ?? 'Otro (Sin categoría predefinida)' ?></span></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -265,31 +265,71 @@ if (!empty($targetUuid)) {
 
                     <div id="cascade-suspension-duration" class="component-stage-form disabled" data-state="suspension-duration">
                         <hr class="component-divider">
-                        <div class="component-group-item component-group-item--wrap">
+                        <div class="component-group-item component-group-item--stacked">
                             <div class="component-card__content">
-                                <div class="component-card__icon-container component-card__icon-container--bordered">
-                                    <span class="material-symbols-rounded">timer</span>
-                                </div>
                                 <div class="component-card__text">
-                                    <h2 class="component-card__title">Duración de la Sanción</h2>
-                                    <p class="component-card__description">Tiempo asignado automáticamente por el sistema.</p>
+                                    <h2 class="component-card__title"><?= t('admin.suspension.duration_title') ?? 'Duración de la Sanción' ?></h2>
+                                    <p class="component-card__description"><?= t('admin.suspension.duration_desc') ?? 'Selecciona el tiempo predefinido o elige establecer una fecha manualmente.' ?></p>
                                 </div>
                             </div>
-                            <div class="component-card__actions actions-right">
-                                <span class="component-badge" style="font-size: 15px; font-weight: 600; color: var(--color-error); border-color: var(--color-error); padding: 8px 16px;">
-                                    <span id="display-suspension-days" style="margin-right: 4px;">0</span> Días
-                                </span>
+                            <div class="component-card__actions">
+                                <div class="component-dropdown" id="dropdown-suspension-duration" data-value="">
+                                    <div class="component-dropdown-trigger" data-action="admin-toggle-dropdown">
+                                        <span class="material-symbols-rounded trigger-select-icon">hourglass_empty</span>
+                                        <span class="component-dropdown-text">Seleccionar duración</span>
+                                        <span class="material-symbols-rounded">expand_more</span>
+                                    </div>
+                                    <div class="component-module component-module--display-overlay component-module--size-m component-module--dropdown-selector disabled">
+                                        <div class="component-module-panel">
+                                            <div class="pill-container"><div class="drag-handle"></div></div>
+                                            <div class="component-module-panel-body component-module-panel-body--padded">
+                                                <div class="component-menu-list overflow-y component-menu-list--dropdown">
+                                                    
+                                                    <?php
+                                                    $durations = [
+                                                        '1d'  => t('admin.suspension.dur_1d') ?? '1 Día',
+                                                        '3d'  => t('admin.suspension.dur_3d') ?? '3 Días',
+                                                        '7d'  => t('admin.suspension.dur_7d') ?? '7 Días',
+                                                        '14d' => t('admin.suspension.dur_14d') ?? '14 Días',
+                                                        '30d' => t('admin.suspension.dur_30d') ?? '30 Días',
+                                                        '3m'  => t('admin.suspension.dur_3m') ?? '3 Meses',
+                                                        '6m'  => t('admin.suspension.dur_6m') ?? '6 Meses',
+                                                        '1y'  => t('admin.suspension.dur_1y') ?? '1 Año',
+                                                        '3y'  => t('admin.suspension.dur_3y') ?? '3 Años',
+                                                        'other' => t('admin.suspension.dur_other') ?? 'Personalizado (Elegir fecha)'
+                                                    ];
+                                                    
+                                                    foreach ($durations as $key => $label): 
+                                                        // Icono dinámico según si es "other" o no
+                                                        $icon = ($key === 'other') ? 'edit_calendar' : 'hourglass_empty';
+                                                    ?>
+                                                        <div class="component-menu-link" data-action="status-select-option" data-target="suspension-duration" data-value="<?= $key ?>" data-label="<?= $label ?>">
+                                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded"><?= $icon ?></span></div>
+                                                            <div class="component-menu-link-text" style="display: flex; justify-content: space-between; width: 100%; align-items: center; padding-right: 8px;">
+                                                                <span><?= $label ?></span>
+                                                                <span class="component-badge recommendation-badge" style="display: none; font-size: 10px; height: 20px; min-height: 20px; padding: 0 6px; background-color: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success); margin-left: 8px;">
+                                                                    <?= t('admin.suspension.recommended') ?? 'Recomendado' ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="cascade-suspension-date" class="component-stage-form <?= ($suspensionType === 'permanent') ? 'disabled' : 'active' ?>" data-state="suspension-date">
+                    <div id="cascade-suspension-date" class="component-stage-form disabled" data-state="suspension-date">
                         <hr class="component-divider">
                         <div class="component-group-item component-group-item--stacked">
                             <div class="component-card__content">
                                 <div class="component-card__text">
                                     <h2 class="component-card__title">Fecha y hora de expiración</h2>
-                                    <p class="component-card__description">El usuario recuperará el acceso automáticamente al llegar a este límite de tiempo.</p>
+                                    <p class="component-card__description">Usa el calendario para seleccionar exactamente cuándo se levantará la sanción.</p>
                                 </div>
                             </div>
                             <div class="component-card__actions">
@@ -302,7 +342,6 @@ if (!empty($targetUuid)) {
                                     <input type="hidden" id="input-suspension-date" value="<?= htmlspecialchars($suspensionExpiresAt) ?>">
 
                                     <?php 
-                                        // Definimos el ID del módulo y lo incluimos
                                         $calendarModuleId = 'moduleCalendarSuspension';
                                         include __DIR__ . '/../../modules/moduleCalendar.php'; 
                                     ?>
