@@ -13,6 +13,8 @@ export class AdminUsersController {
         };
         
         this.searchQuery = '';
+        this.currentViewMode = 'cards'; // Estado en memoria, sin persistencia
+        
         this.init();
     }
 
@@ -35,11 +37,36 @@ export class AdminUsersController {
         this.filteredCards = [...this.allCards];
         this.currentPage = 1;
         this.updatePagination();
+
+        // Siempre resetear a la vista de tarjetas al cargar
+        this.currentViewMode = 'cards';
+        this.applyViewMode(this.currentViewMode);
+    }
+
+    applyViewMode(mode) {
+        const list = document.getElementById('admin-data-list');
+        const icon = document.getElementById('view-toggle-icon');
+        const wrapper = document.querySelector('#admin-users-view .component-wrapper');
+        const header = document.querySelector('#admin-users-view .component-header-card');
+
+        if (!list) return;
+        
+        this.currentViewMode = mode;
+        
+        if (mode === 'table') {
+            list.classList.add('component-data-list--table');
+            if (icon) icon.textContent = 'grid_view';
+            if (wrapper) wrapper.style.maxWidth = '100%';
+            if (header) header.style.display = 'none';
+        } else {
+            list.classList.remove('component-data-list--table');
+            if (icon) icon.textContent = 'table_rows';
+            if (wrapper) wrapper.style.maxWidth = ''; // Limpia el estilo para usar el del CSS
+            if (header) header.style.display = ''; // Limpia el estilo para mostrarlo
+        }
     }
 
     bindEvents() {
-        // --- LISTENER DE CAPTURA PARA RESETEAR LA VISTA DEL FILTRO ---
-        // Se asegura de reiniciar el slider del filtro cuando el MainController abre el modal dinámico
         document.body.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action="toggleModule"]');
             if (btn && btn.dataset.target === 'moduleAdminUsersFilters') {
@@ -47,58 +74,53 @@ export class AdminUsersController {
             }
         }, true);
 
-        // --- LISTENER PRINCIPAL ---
         document.body.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="admin-toggle-view"]')) {
+                const newMode = this.currentViewMode === 'cards' ? 'table' : 'cards';
+                this.applyViewMode(newMode);
+                return;
+            }
+
             const card = e.target.closest('.js-admin-user-card');
             if (card && document.getElementById('admin-users-view')) {
                 this.handleCardSelection(card);
             }
 
-            // Toolbar: Toggle Búsqueda
             if (e.target.closest('[data-action="admin-toggle-search"]')) {
                 this.toggleSearchToolbar();
             }
 
-            // Toolbar: Limpiar Selección
             if (e.target.closest('[data-action="admin-clear-selection"]')) {
                 this.clearSelection();
             }
 
-            // Toolbar: Administrar cuenta
             if (e.target.closest('[data-action="admin-manage-account"]')) {
                 this.handleManageAccount();
             }
 
-            // Toolbar: Administrar rol
             if (e.target.closest('[data-action="admin-manage-role"]')) {
                 this.handleManageRole();
             }
 
-            // Toolbar: Administrar estado (NUEVO)
             if (e.target.closest('[data-action="admin-manage-status"]')) {
                 this.handleManageStatus();
             }
 
-            // Filtros: Navegar a submenú
             const navBtn = e.target.closest('[data-action="admin-filter-nav"]');
             if (navBtn) {
                 this.slideFilterView(navBtn.dataset.target, navBtn.querySelector('.component-menu-link-text span').textContent);
             }
 
-            // Filtros: Botón Volver
             if (e.target.closest('#filter-btn-back')) {
                 this.resetFilterView();
             }
 
-            // Filtros: Aplicar
             if (e.target.closest('[data-action="admin-filter-apply"]')) {
-                // Selecciona dinámicamente el módulo correcto
                 const module = document.querySelector('[data-module="moduleAdminUsersFilters"]');
                 if (module) module.classList.add('disabled');
                 this.applyFiltersAndSearch();
             }
 
-            // Filtros: Limpiar todo
             if (e.target.closest('[data-action="admin-filter-clear"]')) {
                 this.filters.roles = [];
                 this.filters.status = [];
@@ -107,7 +129,6 @@ export class AdminUsersController {
                 this.applyFiltersAndSearch();
             }
 
-            // Paginación
             if (e.target.closest('#admin-pag-prev')) {
                 if (this.currentPage > 1) { this.currentPage--; this.updatePagination(); }
             }
@@ -117,7 +138,6 @@ export class AdminUsersController {
             }
         });
 
-        // Búsqueda en tiempo real e input de checkboxes
         document.body.addEventListener('input', (e) => {
             if (e.target.id === 'admin-user-search-input') {
                 this.searchQuery = e.target.value.toLowerCase().trim();
@@ -185,7 +205,6 @@ export class AdminUsersController {
         const uuid = selectedCard.dataset.uuid;
         const targetUrl = `/ProjectAurora/admin/users/manage-account?uuid=${uuid}`;
         
-        // Creamos un link falso para que el router SPA lo intercepte de forma natural
         const link = document.createElement('a');
         link.href = targetUrl;
         link.dataset.nav = targetUrl;
@@ -271,7 +290,7 @@ export class AdminUsersController {
         this.updatePagination();
     }
 
-updatePagination() {
+    updatePagination() {
         const total = this.filteredCards.length;
         const maxPages = Math.ceil(total / this.itemsPerPage) || 1;
         const info = document.getElementById('admin-pag-info');
@@ -283,32 +302,25 @@ updatePagination() {
         if (btnPrev) btnPrev.disabled = this.currentPage === 1;
         if (btnNext) btnNext.disabled = this.currentPage === maxPages || total === 0;
 
-        // --- NUEVA LÓGICA DE ESTADOS VACÍOS ---
         if (this.allCards.length === 0) {
-            // 1. La base de datos está vacía realmente (PHP ya mostró su mensaje).
-            // Ocultamos el mensaje de "filtros sin resultados" de JS.
             if (emptyState) emptyState.style.display = 'none';
-            
         } else if (total === 0) {
-            // 2. Hay usuarios en BD, pero los filtros/búsqueda ocultaron todos.
-            // Mostramos el mensaje de JS.
             if (emptyState) emptyState.style.display = 'block';
-            
         } else {
-            // 3. Hay resultados válidos. Ocultamos el mensaje vacío y paginamos.
             if (emptyState) emptyState.style.display = 'none';
             const start = (this.currentPage - 1) * this.itemsPerPage;
             const end = start + this.itemsPerPage;
 
             this.filteredCards.forEach((card, index) => {
                 if (index >= start && index < end) {
-                    card.style.display = 'flex';
+                    card.style.display = 'flex'; 
                 } else {
                     card.style.display = 'none';
                 }
             });
         }
     }
+
     resetFilterView() {
         const viewport = document.getElementById('filter-viewport');
         const btnBack = document.getElementById('filter-btn-back');
@@ -341,7 +353,6 @@ updatePagination() {
                 `;
             });
         } else if (targetType === 'view-status') {
-            // El backend retorna 'active', 'deleted', o 'suspended' (derivado de is_suspended)
             const statuses = ['active', 'suspended', 'deleted'];
             statuses.forEach(status => {
                 const isChecked = this.filters.status.includes(status) ? 'checked' : '';

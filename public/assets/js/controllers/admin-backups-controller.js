@@ -5,22 +5,36 @@ import { Toast } from '../components/toast-controller.js';
 
 export class AdminBackupsController {
     constructor() {
+        this.currentViewMode = 'cards'; // Estado en memoria, sin persistencia
         this.init();
     }
 
     init() {
-        // Escucha global de eventos usando Event Delegation
+        window.addEventListener('viewLoaded', (e) => {
+            if (e.detail.url.includes('/admin/backups')) {
+                this.setupView();
+            }
+        });
+
+        if (window.location.pathname.includes('/admin/backups')) {
+            this.setupView();
+        }
+
         document.body.addEventListener('click', (e) => {
             const view = document.getElementById('admin-backups-view');
             if (!view) return;
 
-            // Manejo de la tarjeta de backup
+            if (e.target.closest('[data-action="admin-toggle-view"]')) {
+                const newMode = this.currentViewMode === 'cards' ? 'table' : 'cards';
+                this.applyViewMode(newMode);
+                return;
+            }
+
             const card = e.target.closest('.js-admin-backup-card');
             if (card) {
                 this.handleCardSelection(card);
             }
 
-            // Manejo de los botones del Toolbar
             if (e.target.closest('[data-action="admin-toggle-search-bkp"]')) {
                 this.toggleSearchToolbar();
             }
@@ -48,6 +62,35 @@ export class AdminBackupsController {
                 this.filterBackups(e.target.value.toLowerCase().trim());
             }
         });
+    }
+
+    setupView() {
+        // Siempre resetear a la vista de tarjetas al cargar
+        this.currentViewMode = 'cards';
+        this.applyViewMode(this.currentViewMode);
+    }
+
+    applyViewMode(mode) {
+        const list = document.getElementById('admin-data-list-backups');
+        const icon = document.getElementById('view-toggle-icon-bkp');
+        const wrapper = document.querySelector('#admin-backups-view .component-wrapper');
+        const header = document.querySelector('#admin-backups-view .component-header-card');
+
+        if (!list) return;
+        
+        this.currentViewMode = mode;
+        
+        if (mode === 'table') {
+            list.classList.add('component-data-list--table');
+            if (icon) icon.textContent = 'grid_view';
+            if (wrapper) wrapper.style.maxWidth = '100%';
+            if (header) header.style.display = 'none';
+        } else {
+            list.classList.remove('component-data-list--table');
+            if (icon) icon.textContent = 'table_rows';
+            if (wrapper) wrapper.style.maxWidth = ''; // Limpia el estilo para usar el del CSS
+            if (header) header.style.display = ''; // Limpia el estilo para mostrarlo
+        }
     }
 
     handleCardSelection(card) {
@@ -92,7 +135,7 @@ export class AdminBackupsController {
         cards.forEach(card => {
             const filename = card.dataset.filename.toLowerCase();
             if (filename.includes(query)) {
-                card.style.display = 'flex';
+                card.style.display = 'flex'; 
             } else {
                 card.style.display = 'none';
             }
@@ -109,7 +152,6 @@ export class AdminBackupsController {
             const res = await ApiService.post(API_ROUTES.ADMIN.CREATE_BACKUP, { csrf_token: csrfToken });
             if (res.success) {
                 Toast.show(res.message, 'success');
-                // Refrescamos la vista para mostrar la carta recien generada (aprovechando el render de PHP)
                 setTimeout(() => window.location.reload(), 1500); 
             } else {
                 Toast.show(res.message, 'error');
@@ -139,7 +181,6 @@ export class AdminBackupsController {
                 selectedCard.remove();
                 this.clearSelection();
                 
-                // Revisar si ya no hay más backups para mostrar el mensaje de vacío
                 if (document.querySelectorAll('.js-admin-backup-card').length === 0) {
                     const emptyState = document.getElementById('admin-empty-state-bkp');
                     if (emptyState) emptyState.style.display = 'block';

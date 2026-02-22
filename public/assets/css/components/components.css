@@ -929,3 +929,49 @@ input:checked + .component-toggle-slider:before { transform: translateX(20px); b
     margin-top: 14px;
     color: var(--text-primary);
 }
+
+/* =========================================
+   SYSTEM: DATA LISTS & TOOLBARS (GENERIC)
+   ========================================= */
+.component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 24px auto; z-index: 15; }
+.component-toolbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); position: relative; }
+.toolbar-group { width: 100%; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.component-toolbar--primary { position: relative; z-index: 2; }
+.component-toolbar--secondary { position: absolute; top: calc(100% + 5px); left: 0; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-card); z-index: 10; display: none; }
+.component-toolbar--secondary.active { display: flex; }
+.component-toolbar__side { display: flex; align-items: center; gap: 8px; }
+.selection-info-text { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-right: 4px; }
+
+.component-pagination { display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 8px; height: 40px; padding: 2px; gap: 4px; }
+.component-pagination .component-button { border: 1px solid var(--border-transparent-20); border-radius: 6px; background-color: transparent; }
+.component-pagination .component-button:hover:not(:disabled) { background-color: var(--bg-hover-light); }
+.component-pagination-info { padding: 0 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; height: 100%; }
+
+.component-data-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.component-data-card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; cursor: pointer; transition: none; }
+.component-data-card:hover { border-color: var(--text-primary); }
+.component-data-card.selected { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); }
+.component-data-column { display: flex; align-items: center; font-size: 14px; color: var(--text-primary); }
+
+.component-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 30px; background-color: transparent; border: 1px solid var(--border-transparent-20); border-radius: 50px; font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+.component-badge .material-symbols-rounded { font-size: 16px; }
+
+/* Módulo de Filtros Dinámicos (Sin animación) */
+.filter-view-container { display: flex; width: 200%; transition: none; }
+.filter-view { width: 50%; flex-shrink: 0; padding: 0 8px; }
+.filter-module-body { overflow: hidden; padding: 0; }
+.filter-active-indicator { width: 8px; height: 8px; background-color: var(--action-primary); border-radius: 50%; display: none; }
+.has-active-filters .filter-active-indicator { display: block; }
+.filter-checkbox-wrapper { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; cursor: pointer; transition: none; }
+.filter-checkbox-wrapper:hover { background-color: var(--bg-hover-light); }
+.filter-checkbox-wrapper input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--action-primary); cursor: pointer; }
+
+/* --- TABLE VIEW MODIFIER --- */
+.component-data-list-header { display: none; }
+.component-data-list--table { border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-surface); gap: 0; overflow-x: auto; display: block; }
+.component-data-list--table .component-data-list-header { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(250px, 1fr); gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); font-size: 13px; font-weight: 600; color: var(--text-secondary); background-color: var(--bg-surface-alt); border-radius: 12px 12px 0 0; min-width: 900px; }
+.component-data-list--table .component-data-card { display: grid; grid-template-columns: 40px minmax(140px, 1fr) minmax(200px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(250px, 1fr); padding: 12px 16px; gap: 16px; border: none; border-bottom: 1px solid var(--border-lighter); border-radius: 0; min-width: 900px; }
+.component-data-list--table .component-data-card:last-child { border-bottom: none; }
+.component-data-list--table .component-data-card:hover { background-color: var(--bg-hover-light); border-color: transparent; }
+.component-data-list--table .component-data-card.selected { background-color: var(--bg-hover-light); box-shadow: inset 4px 0 0 0 var(--action-primary); border-color: transparent; }
+.component-data-list--table .component-badge { border: none; padding: 0; min-height: auto; font-size: 14px; color: var(--text-primary); background: transparent; }

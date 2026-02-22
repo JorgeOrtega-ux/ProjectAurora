@@ -7,7 +7,6 @@ $users = [];
 global $dbConnection;
 if (isset($dbConnection)) {
     try {
-        // Se agregó is_suspended a la consulta
         $stmt = $dbConnection->query("SELECT uuid, username, email, role, status, is_suspended, avatar_path, created_at FROM users ORDER BY created_at DESC");
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (\Throwable $e) {
@@ -16,41 +15,6 @@ if (isset($dbConnection)) {
 }
 ?>
 
-<style>
-    /* Estilos propios de Admin Users */
-    .component-toolbar-wrapper { position: sticky; top: 16px; width: 100%; max-width: 425px; margin: 0 auto 24px auto; }
-    .component-toolbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); position: relative; }
-    .toolbar-group { width: 100%; height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .component-toolbar--primary { position: relative; z-index: 2; }
-    .component-toolbar--secondary { position: absolute; top: calc(100% + 5px); left: 0; width: 100%; height: 56px; padding: 8px; background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-card); z-index: 10; opacity: 0; pointer-events: none; visibility: hidden; transform: translateY(-5px); transition: all 0.2s ease; }
-    .component-toolbar--secondary.active { opacity: 1; pointer-events: auto; visibility: visible; transform: translateY(0); }
-    .component-toolbar__side { display: flex; align-items: center; gap: 8px; }
-    .selection-info-text { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-right: 4px; }
-    
-    .component-pagination { display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 8px; height: 40px; padding: 2px; gap: 4px; }
-    .component-pagination .component-button { border: 1px solid var(--border-transparent-20); border-radius: 6px; background-color: transparent; }
-    .component-pagination .component-button:hover:not(:disabled) { background-color: var(--bg-hover-light); }
-    .component-pagination-info { padding: 0 8px; font-size: 14px; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; height: 100%; }
-
-    .component-users-list { display: flex; flex-direction: column; gap: 12px; }
-    .component-user-card { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
-    .component-user-card:hover { border-color: var(--text-primary); }
-    .component-user-card.selected { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); }
-
-    .component-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 30px; background-color: transparent; border: 1px solid var(--border-transparent-20); border-radius: 50px; font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
-    .component-badge .material-symbols-rounded { font-size: 16px; }
-
-    /* Estilos del Módulo de Filtros Dinámicos */
-    .filter-view-container { display: flex; width: 200%; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-    .filter-view { width: 50%; flex-shrink: 0; padding: 0 8px; }
-    .filter-module-body { overflow: hidden; padding: 0; }
-    .filter-active-indicator { width: 8px; height: 8px; background-color: var(--action-primary); border-radius: 50%; display: none; }
-    .has-active-filters .filter-active-indicator { display: block; }
-    .filter-checkbox-wrapper { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
-    .filter-checkbox-wrapper:hover { background-color: var(--bg-hover-light); }
-    .filter-checkbox-wrapper input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--action-primary); cursor: pointer; }
-</style>
-
 <div class="view-content" id="admin-users-view">
     <div class="component-wrapper">
         
@@ -58,6 +22,9 @@ if (isset($dbConnection)) {
             <div class="component-toolbar">
                 <div class="toolbar-group component-toolbar--primary" id="toolbar-primary">
                     <div class="component-toolbar__side">
+                        <button type="button" class="component-button component-button--square-40" data-tooltip="Cambiar Vista" data-action="admin-toggle-view">
+                            <span class="material-symbols-rounded" id="view-toggle-icon">table_rows</span>
+                        </button>
                         <button type="button" class="component-button component-button--square-40" data-tooltip="<?= t('admin.users.tooltip_search') ?>" data-action="admin-toggle-search">
                             <span class="material-symbols-rounded">search</span>
                         </button>
@@ -114,14 +81,14 @@ if (isset($dbConnection)) {
                     <div class="component-module-panel">
                         <div class="pill-container"><div class="drag-handle"></div></div>
                         
-                        <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div style="padding: 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <button type="button" class="component-button component-button--square-40" id="filter-btn-back" style="display: none; border: none; background: transparent;">
                                     <span class="material-symbols-rounded">arrow_back</span>
                                 </button>
-                                <h3 style="margin: 0; font-size: 16px; color: var(--text-primary);" id="filter-module-title"><?= t('admin.filter.title') ?></h3>
+                                <h3 style="margin: 0; font-size: 16px; color: #111;" id="filter-module-title"><?= t('admin.filter.title') ?></h3>
                             </div>
-                            <button type="button" class="component-button" style="border: none; background: transparent; color: var(--action-primary); font-weight: 600;" data-action="admin-filter-clear">
+                            <button type="button" class="component-button" style="border: none; background: transparent; color: #007bff; font-weight: 600;" data-action="admin-filter-clear">
                                 <?= t('admin.filter.clear') ?>
                             </button>
                         </div>
@@ -154,7 +121,7 @@ if (isset($dbConnection)) {
                             </div>
                         </div>
 
-                        <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                        <div style="padding: 16px; border-top: 1px solid #e0e0e0;">
                             <button type="button" class="component-button primary" style="width: 100%;" data-action="admin-filter-apply">
                                 <?= t('admin.filter.apply') ?>
                             </button>
@@ -169,17 +136,24 @@ if (isset($dbConnection)) {
             <p class="component-page-description"><?= t('admin.users.desc') ?></p>
         </div>
 
-        <div class="component-users-list" id="admin-users-list">
+        <div class="component-data-list" id="admin-data-list">
+            <div class="component-data-list-header">
+                <div style="flex: 0 0 40px;">Avatar</div>
+                <div style="flex: 1; min-width: 140px;">Usuario</div>
+                <div style="flex: 1.5; min-width: 200px;">Correo Electrónico</div>
+                <div style="flex: 1; min-width: 120px;">Rol</div>
+                <div style="flex: 1; min-width: 120px;">Estado</div>
+                <div style="flex: 1.5; min-width: 250px;">Identificador (UUID)</div>
+            </div>
+
             <?php if (empty($users)): ?>
-                <div style="padding: 24px; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: 12px;">
+                <div style="padding: 24px; text-align: center; color: #666; border: 1px dashed #e0e0e0; border-radius: 12px;">
                     No hay usuarios registrados o no se pudo conectar a la base de datos.
                 </div>
             <?php else: ?>
                 <?php foreach ($users as $user): 
                     $avatarPath = '/ProjectAurora/' . ltrim($user['avatar_path'], '/');
-                    $dateFormatted = date('d M, Y', strtotime($user['created_at']));
                     
-                    // --- NUEVA LÓGICA DE BADGE ---
                     $statusIcon = 'check_circle';
                     $statusLabel = t('admin.filter.status.active') ?? 'Activo';
                     $filterStatusValue = 'active';
@@ -194,47 +168,59 @@ if (isset($dbConnection)) {
                         $filterStatusValue = 'suspended';
                     }
                 ?>
-                    <div class="component-user-card js-admin-user-card" 
+                    <div class="component-data-card js-admin-user-card" 
                          data-uuid="<?= htmlspecialchars($user['uuid']) ?>"
                          data-username="<?= strtolower(htmlspecialchars($user['username'])) ?>"
                          data-email="<?= strtolower(htmlspecialchars($user['email'])) ?>"
                          data-role="<?= htmlspecialchars($user['role']) ?>"
                          data-status="<?= $filterStatusValue ?>">
                         
-                        <div class="component-avatar component-avatar--sm" style="margin-right: 4px;" data-role="<?= htmlspecialchars($user['role']) ?>">
-                            <img src="<?= htmlspecialchars($avatarPath) ?>" class="component-avatar__image" alt="Avatar" loading="lazy">
+                        <div class="component-data-column" style="flex: 0 0 40px;">
+                            <div class="component-avatar component-avatar--sm" data-role="<?= htmlspecialchars($user['role']) ?>">
+                                <img src="<?= htmlspecialchars($avatarPath) ?>" class="component-avatar__image" alt="Avatar" loading="lazy">
+                            </div>
                         </div>
                         
-                        <span class="component-badge" title="Nombre de usuario">
-                            <span class="material-symbols-rounded">person</span>
-                            <?= htmlspecialchars($user['username']) ?>
-                        </span>
+                        <div class="component-data-column" style="flex: 1; min-width: 140px;">
+                            <span class="component-badge" title="Nombre de usuario">
+                                <span class="material-symbols-rounded">person</span>
+                                <span><?= htmlspecialchars($user['username']) ?></span>
+                            </span>
+                        </div>
                         
-                        <span class="component-badge" title="Correo electrónico">
-                            <span class="material-symbols-rounded">mail</span>
-                            <?= htmlspecialchars($user['email']) ?>
-                        </span>
+                        <div class="component-data-column" style="flex: 1.5; min-width: 200px;">
+                            <span class="component-badge" title="Correo electrónico">
+                                <span class="material-symbols-rounded">mail</span>
+                                <span><?= htmlspecialchars($user['email']) ?></span>
+                            </span>
+                        </div>
                         
-                        <span class="component-badge" title="Rol del usuario">
-                            <span class="material-symbols-rounded">shield_person</span>
-                            <?= t('admin.filter.role.' . $user['role']) ?? htmlspecialchars($user['role']) ?>
-                        </span>
+                        <div class="component-data-column" style="flex: 1; min-width: 120px;">
+                            <span class="component-badge" title="Rol del usuario">
+                                <span class="material-symbols-rounded">shield_person</span>
+                                <span><?= t('admin.filter.role.' . $user['role']) ?? htmlspecialchars($user['role']) ?></span>
+                            </span>
+                        </div>
                         
-                        <span class="component-badge" title="Estado de la cuenta">
-                            <span class="material-symbols-rounded"><?= $statusIcon ?></span>
-                            <?= $statusLabel ?>
-                        </span>
+                        <div class="component-data-column" style="flex: 1; min-width: 120px;">
+                            <span class="component-badge" title="Estado de la cuenta">
+                                <span class="material-symbols-rounded"><?= $statusIcon ?></span>
+                                <span><?= $statusLabel ?></span>
+                            </span>
+                        </div>
                         
-                        <span class="component-badge" title="Identificador único (UUID)">
-                            <span class="material-symbols-rounded">fingerprint</span>
-                            <?= htmlspecialchars($user['uuid']) ?>
-                        </span>
+                        <div class="component-data-column" style="flex: 1.5; min-width: 250px;">
+                            <span class="component-badge" title="Identificador único (UUID)">
+                                <span class="material-symbols-rounded">fingerprint</span>
+                                <span style="font-family: monospace;"><?= htmlspecialchars($user['uuid']) ?></span>
+                            </span>
+                        </div>
                         
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
             
-            <div id="admin-empty-state" style="display: none; padding: 24px; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: 12px;">
+            <div id="admin-empty-state" style="display: none; padding: 24px; text-align: center; color: #666; border: 1px dashed #e0e0e0; border-radius: 12px;">
                 <?= t('admin.users.empty') ?>
             </div>
         </div>
