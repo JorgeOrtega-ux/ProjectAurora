@@ -35,7 +35,7 @@ class AuthService {
                 return ['success' => false, 'message' => 'El correo ya está registrado.'];
             }
 
-            $code = sprintf("%06d", mt_rand(1, 999999));
+            $code = Utils::generateNumericCode();
             $password_hash = password_hash($data->password, PASSWORD_BCRYPT);
             
             $payload = json_encode([
@@ -221,7 +221,7 @@ class AuthService {
                     
                     // --- INTEGRACIÓN 2FA ---
                     if (isset($row['two_factor_enabled']) && $row['two_factor_enabled'] == 1) {
-                        $tempToken = bin2hex(random_bytes(32));
+                        $tempToken = Utils::generateSecureToken();
                         $_SESSION['temp_2fa_token'] = $tempToken;
                         $_SESSION['temp_2fa_user_id'] = $row['id'];
                         
@@ -416,7 +416,7 @@ class AuthService {
 
             Utils::resetAttempts($this->conn, 'forgot_password');
 
-            $token = bin2hex(random_bytes(32)); 
+            $token = Utils::generateSecureToken(); 
             $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour')); 
 
             $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'password_reset'";
@@ -484,12 +484,7 @@ class AuthService {
 
             if ($updStmt->execute()) {
                 
-                $logStmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, 'password', :old_val, :new_val)");
-                $logStmt->execute([
-                    ':user_id' => $userId, 
-                    ':old_val' => $oldPasswordHash, 
-                    ':new_val' => $password_hash
-                ]);
+                Utils::logUserChange($this->conn, $userId, 'password', $oldPasswordHash, $password_hash);
 
                 $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
                 $delStmt->bindParam(':id', $codeId);

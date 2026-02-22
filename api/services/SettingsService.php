@@ -15,20 +15,6 @@ class SettingsService {
         $this->conn = $db;
     }
 
-    private function logChange($userId, $field, $oldValue, $newValue) {
-        try {
-            $stmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, :field, :old_val, :new_val)");
-            $stmt->execute([
-                ':user_id' => $userId,
-                ':field'   => $field,
-                ':old_val' => $oldValue,
-                ':new_val' => $newValue
-            ]);
-        } catch (\Throwable $e) {
-            Logger::database("Error al registrar cambio en user_changes_log (Field: $field)", Logger::LEVEL_ERROR, $e);
-        }
-    }
-
     private function countRecentChanges($userId, $field, $interval, $onlyUploads = false) {
         try {
             $query = "SELECT COUNT(*) FROM user_changes_log WHERE user_id = :uid AND modified_field = :field AND changed_at >= DATE_SUB(NOW(), INTERVAL $interval)";
@@ -77,7 +63,7 @@ class SettingsService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
             if ($updStmt->execute([':path' => $webPath, ':id' => $userId])) {
-                $this->logChange($userId, 'avatar', $oldAvatar, $webPath);
+                Utils::logUserChange($this->conn, $userId, 'avatar', $oldAvatar, $webPath);
                 $_SESSION['user_avatar'] = $webPath;
                 Logger::system("Avatar actualizado para el usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Foto de perfil actualizada correctamente.', 'avatar' => $webPath];
@@ -114,7 +100,7 @@ class SettingsService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
             if ($updStmt->execute([':path' => $newWebPath, ':id' => $userId])) {
-                $this->logChange($userId, 'avatar', $oldAvatar, $newWebPath);
+                Utils::logUserChange($this->conn, $userId, 'avatar', $oldAvatar, $newWebPath);
                 $_SESSION['user_avatar'] = $newWebPath;
                 Logger::system("Avatar restaurado por defecto para usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Foto de perfil eliminada.', 'avatar' => $newWebPath];
@@ -158,7 +144,7 @@ class SettingsService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
-                $this->logChange($userId, $field, $oldValue, $newValue);
+                Utils::logUserChange($this->conn, $userId, $field, $oldValue, $newValue);
                 if ($field === 'username') { $_SESSION['user_name'] = $newValue; }
                 else if ($field === 'email') { $_SESSION['user_email'] = $newValue; }
                 
@@ -201,7 +187,7 @@ class SettingsService {
 
             if ($currentEmail === $newEmail) { return ['success' => false, 'message' => 'El nuevo correo no puede ser el actual.']; }
 
-            $code = sprintf("%06d", mt_rand(1, 999999));
+            $code = Utils::generateNumericCode();
             $payload = json_encode(['new_email' => $newEmail]);
             $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
@@ -252,7 +238,7 @@ class SettingsService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET email = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newEmail, ':id' => $userId])) {
-                $this->logChange($userId, 'email', $oldEmail, $newEmail);
+                Utils::logUserChange($this->conn, $userId, 'email', $oldEmail, $newEmail);
                 $_SESSION['user_email'] = $newEmail;
                 
                 $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
@@ -320,7 +306,7 @@ class SettingsService {
             
             $updStmt = $this->conn->prepare("UPDATE users SET password = :new_hash WHERE id = :id");
             if ($updStmt->execute([':new_hash' => $newHash, ':id' => $userId])) {
-                $this->logChange($userId, 'password', $hash, $newHash);
+                Utils::logUserChange($this->conn, $userId, 'password', $hash, $newHash);
                 Utils::resetAttempts($this->conn, 'update_password');
                 Logger::system("Usuario ID: $userId actualizó su contraseña con éxito", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
@@ -453,8 +439,7 @@ class SettingsService {
             $appName = getenv('APP_NAME') ?: 'Project Aurora';
             $tfa = new \RobThree\Auth\TwoFactorAuth($appName);
             if ($tfa->verifyCode($secret, $code)) {
-                $recoveryCodes = [];
-                for ($i = 0; $i < 10; $i++) { $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4)); }
+                $recoveryCodes = Utils::generateRecoveryCodes();
                 $upd = $this->conn->prepare("UPDATE users SET two_factor_enabled = 1, two_factor_recovery_codes = :codes WHERE id = :id");
                 $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
                 
@@ -499,8 +484,7 @@ class SettingsService {
 
             if (!password_verify($password, $hash)) { return ['success' => false, 'message' => 'Contraseña incorrecta.']; }
 
-            $recoveryCodes = [];
-            for ($i = 0; $i < 10; $i++) { $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4)); }
+            $recoveryCodes = Utils::generateRecoveryCodes();
             
             $upd = $this->conn->prepare("UPDATE users SET two_factor_recovery_codes = :codes WHERE id = :id");
             $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
@@ -517,40 +501,6 @@ class SettingsService {
     // MÉTODOS DE GESTIÓN DE DISPOSITIVOS (SESIONES)
     // ==========================================
 
-    private function parseUserAgent($u_agent) {
-        $platform = 'Unknown OS';
-        if (preg_match('/windows|win32/i', $u_agent)) {
-            $platform = 'Windows';
-        } elseif (preg_match('/macintosh|mac os x/i', $u_agent)) {
-            $platform = 'Mac';
-        } elseif (preg_match('/linux/i', $u_agent)) {
-            $platform = 'Linux';
-        } elseif (preg_match('/iphone/i', $u_agent)) {
-            $platform = 'iOS (iPhone)';
-        } elseif (preg_match('/ipad/i', $u_agent)) {
-            $platform = 'iOS (iPad)';
-        } elseif (preg_match('/android/i', $u_agent)) {
-            $platform = 'Android';
-        }
-
-        $browser = 'Unknown Browser';
-        if (preg_match('/MSIE/i', $u_agent) && !preg_match('/Opera/i', $u_agent)) {
-            $browser = 'Internet Explorer';
-        } elseif (preg_match('/Firefox/i', $u_agent)) {
-            $browser = 'Firefox';
-        } elseif (preg_match('/OPR/i', $u_agent)) {
-            $browser = 'Opera';
-        } elseif (preg_match('/Edg/i', $u_agent)) {
-            $browser = 'Edge';
-        } elseif (preg_match('/Chrome/i', $u_agent)) {
-            $browser = 'Chrome';
-        } elseif (preg_match('/Safari/i', $u_agent)) {
-            $browser = 'Safari';
-        }
-        
-        return ['os' => $platform, 'browser' => $browser];
-    }
-
     public function getDevices($userId, $currentSessionId) {
         try {
             $stmt = $this->conn->prepare("SELECT session_id, ip_address, user_agent, last_activity, created_at FROM user_sessions WHERE user_id = :uid ORDER BY last_activity DESC");
@@ -559,7 +509,7 @@ class SettingsService {
 
             $devices = [];
             foreach ($sessions as $session) {
-                $parsedUA = $this->parseUserAgent($session['user_agent']);
+                $parsedUA = Utils::parseUserAgent($session['user_agent']);
                 $devices[] = [
                     'session_id' => $session['session_id'],
                     'ip_address' => $session['ip_address'],

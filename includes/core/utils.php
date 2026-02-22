@@ -366,5 +366,109 @@ class Utils {
             Logger::database("Error al reiniciar intentos de rate_limits", Logger::LEVEL_ERROR, $e);
         }
     }
+
+    // ==========================================
+    // NUEVAS ABSTRACCIONES (DRY)
+    // ==========================================
+
+    /**
+     * Parseo de User Agent para obtener SO y Navegador
+     */
+    public static function parseUserAgent($u_agent) {
+        $platform = 'Unknown OS';
+        if (preg_match('/windows|win32/i', $u_agent)) {
+            $platform = 'Windows';
+        } elseif (preg_match('/macintosh|mac os x/i', $u_agent)) {
+            $platform = 'Mac';
+        } elseif (preg_match('/linux/i', $u_agent)) {
+            $platform = 'Linux';
+        } elseif (preg_match('/iphone/i', $u_agent)) {
+            $platform = 'iOS (iPhone)';
+        } elseif (preg_match('/ipad/i', $u_agent)) {
+            $platform = 'iOS (iPad)';
+        } elseif (preg_match('/android/i', $u_agent)) {
+            $platform = 'Android';
+        }
+
+        $browser = 'Unknown Browser';
+        if (preg_match('/MSIE/i', $u_agent) && !preg_match('/Opera/i', $u_agent)) {
+            $browser = 'Internet Explorer';
+        } elseif (preg_match('/Firefox/i', $u_agent)) {
+            $browser = 'Firefox';
+        } elseif (preg_match('/OPR/i', $u_agent)) {
+            $browser = 'Opera';
+        } elseif (preg_match('/Edg/i', $u_agent)) {
+            $browser = 'Edge';
+        } elseif (preg_match('/Chrome/i', $u_agent)) {
+            $browser = 'Chrome';
+        } elseif (preg_match('/Safari/i', $u_agent)) {
+            $browser = 'Safari';
+        }
+        
+        return ['os' => $platform, 'browser' => $browser];
+    }
+
+    /**
+     * Genera un código numérico seguro de longitud específica
+     */
+    public static function generateNumericCode($length = 6) {
+        try {
+            // max value for $length (ej: 6 -> 999999)
+            $max = pow(10, $length) - 1;
+            return str_pad((string) random_int(0, $max), $length, '0', STR_PAD_LEFT);
+        } catch (\Exception $e) {
+            // Fallback seguro en caso de que random_int falle
+            return sprintf("%0" . $length . "d", mt_rand(0, pow(10, $length) - 1));
+        }
+    }
+
+    /**
+     * Genera un token criptográficamente seguro
+     */
+    public static function generateSecureToken($bytes = 32) {
+        return bin2hex(random_bytes($bytes));
+    }
+
+    /**
+     * Genera un array de códigos de recuperación 2FA (Formato XXXX-XXXX)
+     */
+    public static function generateRecoveryCodes($count = 10) {
+        $codes = [];
+        for ($i = 0; $i < $count; $i++) {
+            $codes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4));
+        }
+        return $codes;
+    }
+
+    /**
+     * Centraliza el registro de cambios en el historial del usuario (Auditoría)
+     */
+    public static function logUserChange($conn, $userId, $field, $oldValue, $newValue, $adminId = null) {
+        try {
+            $actualField = $adminId ? $field . ' (by Admin ID: ' . $adminId . ')' : $field;
+            $stmt = $conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, :field, :old_val, :new_val)");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':field'   => $actualField,
+                ':old_val' => $oldValue,
+                ':new_val' => $newValue
+            ]);
+        } catch (\Throwable $e) {
+            Logger::database("Error al registrar cambio en user_changes_log (Field: $field)", Logger::LEVEL_ERROR, $e);
+        }
+    }
+
+    /**
+     * Formatea una fecha SQL a un formato legible
+     */
+    public static function formatDate($dateString, $format = 'd/m/Y H:i:s') {
+        if (empty($dateString)) return '';
+        try {
+            $d = new \DateTime($dateString);
+            return $d->format($format);
+        } catch (\Exception $e) {
+            return $dateString;
+        }
+    }
 }
 ?>

@@ -13,20 +13,6 @@ class AdminService {
         $this->conn = $db;
     }
 
-    private function logChange($userId, $field, $oldValue, $newValue, $adminId) {
-        try {
-            $stmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, :field, :old_val, :new_val)");
-            $stmt->execute([
-                ':user_id' => $userId,
-                ':field'   => $field . ' (by Admin ID: ' . $adminId . ')',
-                ':old_val' => $oldValue,
-                ':new_val' => $newValue
-            ]);
-        } catch (\Throwable $e) {
-            Logger::database("Error al registrar cambio administrativo en user_changes_log", Logger::LEVEL_ERROR, $e);
-        }
-    }
-
     private function getTargetUser($targetUuid) {
         $stmt = $this->conn->prepare("SELECT id, uuid, username, email, avatar_path, role FROM users WHERE uuid = :uuid LIMIT 1");
         $stmt->execute([':uuid' => $targetUuid]);
@@ -56,7 +42,7 @@ class AdminService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
             if ($updStmt->execute([':path' => $webPath, ':id' => $userId])) {
-                $this->logChange($userId, 'avatar', $oldAvatar, $webPath, $adminId);
+                Utils::logUserChange($this->conn, $userId, 'avatar', $oldAvatar, $webPath, $adminId);
                 Logger::system("Admin ID: $adminId actualizó el avatar del Usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Avatar actualizado por el administrador.', 'avatar' => $webPath];
             }
@@ -88,7 +74,7 @@ class AdminService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET avatar_path = :path WHERE id = :id");
             if ($updStmt->execute([':path' => $newWebPath, ':id' => $userId])) {
-                $this->logChange($userId, 'avatar', $oldAvatar, $newWebPath, $adminId);
+                Utils::logUserChange($this->conn, $userId, 'avatar', $oldAvatar, $newWebPath, $adminId);
                 Logger::system("Admin ID: $adminId eliminó el avatar del Usuario ID: $userId", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Avatar restaurado forzosamente.', 'avatar' => $newWebPath];
             }
@@ -140,7 +126,7 @@ class AdminService {
 
             $updStmt = $this->conn->prepare("UPDATE users SET $field = :new_val WHERE id = :id");
             if ($updStmt->execute([':new_val' => $newValue, ':id' => $userId])) {
-                $this->logChange($userId, $field, $oldValue, $newValue, $adminId);
+                Utils::logUserChange($this->conn, $userId, $field, $oldValue, $newValue, $adminId);
                 Logger::system("Admin ID: $adminId forzó cambio de $field para Usuario ID: $userId. Valor: $newValue", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Campo actualizado por el administrador.', 'newValue' => $newValue];
             }
@@ -181,7 +167,7 @@ class AdminService {
 
             $updStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, $field) VALUES (:id, :val) ON DUPLICATE KEY UPDATE $field = :val2");
             if ($updStmt->execute([':id' => $userId, ':val' => $value, ':val2' => $value])) {
-                $this->logChange($userId, 'pref_' . $field, $oldValue, $value, $adminId);
+                Utils::logUserChange($this->conn, $userId, 'pref_' . $field, $oldValue, $value, $adminId);
                 Logger::system("Admin ID: $adminId actualizó la preferencia $field para Usuario ID: $userId. Valor: $value", Logger::LEVEL_INFO);
                 return ['success' => true, 'message' => 'Preferencia actualizada por el administrador.'];
             }
@@ -299,7 +285,7 @@ class AdminService {
                 ':id' => $userId
             ]);
 
-            $this->logChange($userId, 'account_status_and_access', $oldSummary, $newSummary, $adminId);
+            Utils::logUserChange($this->conn, $userId, 'account_status_and_access', $oldSummary, $newSummary, $adminId);
 
             if ($status === 'deleted' || $is_suspended == 1) {
                 $delSessions = $this->conn->prepare("DELETE FROM user_sessions WHERE user_id = :id");
